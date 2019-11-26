@@ -3,7 +3,7 @@
 """
 @create time: 2019-11-22 10:19
 @author: Jiawei Wu
-@edit time: 2019-11-22 14:55
+@edit time: 2019-11-25 09:18
 @file: /linear_agent.py
 """
 
@@ -13,7 +13,7 @@ import pandas as pd
 
 class LinearAgent:
     """线性学习（QLearning、Sarsa及变形）的基类"""
-    def __init__(self, actions: list, e_greedy: float < 1, learning_rate, reward_decay):
+    def __init__(self, actions: list, e_greedy: float, learning_rate, reward_decay):
         """
         初始化基类
         @param actions: 动作空间（注：规定动作都是非负整数）
@@ -88,7 +88,7 @@ class QLearning(LinearAgent):
 
 class Sarsa(LinearAgent):
     def __init__(self, actions, learning_rate=0.01, reward_decay=0.9, e_greedy=0.9):
-        super(QLearning, self).__init__(actions, e_greedy)
+        super(Sarsa, self).__init__(actions, e_greedy, reward_decay, e_greedy)
         self.lr = learning_rate
         self.gamma = reward_decay
 
