@@ -3,7 +3,7 @@
 """
 @create time: 2019-11-22 10:19
 @author: Jiawei Wu
-@edit time: 2019-11-25 09:18
+@edit time: 2019-11-26 16:28
 @file: /linear_agent.py
 """
 
@@ -76,10 +76,10 @@ class QLearning(LinearAgent):
     def __init__(self, actions, learning_rate=0.01, reward_decay=0.9, e_greedy=0.9):
         super(QLearning, self).__init__(actions, e_greedy, learning_rate, reward_decay)
 
-    def learn(self, s, a, r, s_):
+    def learn(self, s, a, r, d, s_):
         self.check_state_exist(s_)
         q_predict = self.q_table.loc[s, a]
-        if s_ != 'terminal':
+        if not d:
             q_target = r + self.gamma * self.q_table.loc[s_, :].max()  # next state is not terminal
         else:
             q_target = r  # next state is terminal
@@ -92,10 +92,10 @@ class Sarsa(LinearAgent):
         self.lr = learning_rate
         self.gamma = reward_decay
 
-    def learn(self, s, a, r, s_, a_):
+    def learn(self, s, a, r, d, s_, a_):
         self.check_state_exist(s_)
         q_predict = self.q_table.loc[s, a]
-        if s_ != 'terminal':
+        if not d:
             q_target = r + self.gamma * self.q_table.loc[s_, a_]  # next state is not terminal
         else:
             q_target = r  # next state is terminal

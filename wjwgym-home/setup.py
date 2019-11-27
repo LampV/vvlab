@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2019-11-25 11:08
-@edit time: 2019-11-26 10:55
+@edit time: 2019-11-26 15:53
 @file: /wjwgym-home/setup.py
 """
 
@@ -18,7 +18,7 @@ def readme():
 
 
 setup(
-    name='wjwpkg',
+    name='wjwgym',
     version='0.1.0',
     packages=find_packages(),
     scripts=[],
