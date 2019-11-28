@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2019-11-17 11:23
-@edit time: 2019-11-27 17:14
+@edit time: 2019-11-28 10:30
 @file: /dqn.py
 @desc: 创建DQN对象
 """
@@ -18,14 +18,16 @@ from functools import reduce
 from tqdm import trange
 
 class ExpReplay:
-    def __init__(self, MAX_MEM=2000, MIN_MEM=None, BENCH_SIZE=None):
+    def __init__(self, dim, MAX_MEM=2000, MIN_MEM=None, BENCH_SIZE=None):
         """
         定义经验回放池的参数
+        @param dim: Dimension of step (state, action, reward, done, next_state)
         @param MAX_MEM: Maximum memory
         @param MIN_MEM: Minimum memory，超过这个数目才返回bench
         @param BENCH_SIZE: Benchmark size
         """
         # 保证参数被定义
+        self.dim = dim
         if not MIN_MEM:
             MIN_MEM = MAX_MEM // 10
         if not BENCH_SIZE:
@@ -34,11 +36,12 @@ class ExpReplay:
         self.min_mem = MIN_MEM
         self.bench_size = BENCH_SIZE
         # 定义经验回放池
-        self.expreplay_pool = np.zeros(0)
+        self.expreplay_pool = np.array([[]])
+        self.mem_count = 0
 
     # TODO 修复add_step失败的问题
     def add_step(self, step):
-        np.append(self.expreplay_pool, step)
+        self.expreplay_pool = np.append(self.expreplay_pool, step).reshape(-1, self.dim)
         if self.expreplay_pool.size > self.max_mem:
             # 如果超了，随机删除10%
             del_indexs = np.random.choice(self.max_mem, self.max_mem // 10)
@@ -46,9 +49,10 @@ class ExpReplay:
 
     def get_bench(self, BENCH_SIZE=None):
         bench_size = BENCH_SIZE if BENCH_SIZE else self.bench_size
-        if self.expreplay_pool.size > self.min_mem:
+        if self.expreplay_pool.shape[0] > self.min_mem:
             # 比最小输出阈值大的时候才返回bench
-            return self.expreplay_pool.random.choice(bench_size)
+            choice_indexs = np.random.choice(self.expreplay_pool.shape[0], bench_size)
+            return self.expreplay_pool[choice_indexs]
         else:
             return None
 
@@ -92,13 +96,14 @@ class DQN(object):
 
         self.epsilon = 0.9
         self.epsilon_min = 0.1
+        self.epsilon_decay = 0.9
         self.eval_every = 10
         # 网络创建
         self.n_states = n_states
         self.n_actions = n_actions
         self.eval_net = Net(n_states, n_actions)
         self.target_net = Net(n_states, n_actions)
-        self.replay_buff = ExpReplay(200)
+        self.replay_buff = ExpReplay(n_states * 2 + 3, 200)
         # 定义优化器和损失函数
         self.optimizer = torch.optim.Adam(self.eval_net.parameters(), lr=learning_rate)
         self.loss_func = nn.MSELoss()
@@ -107,7 +112,7 @@ class DQN(object):
 
     def get_action(self, state):
         # epsilon update
-        self.epsilon * 0.999 if self.epsilon > self.epsilon_min else self.epsilon
+        self.epsilon = self.epsilon * self.epsilon_decay if self.epsilon > self.epsilon_min else self.epsilon
         # 将行向量转为列向量（1 x n_states -> n_states x 1 x 1)
         if np.random.rand() < self.epsilon:
             # 概率随机
@@ -118,6 +123,11 @@ class DQN(object):
             action_values = self.eval_net.forward(state)
             return action_values.data.numpy().argmax()
 
+    def get_raw_out(self, state):
+        state = torch.unsqueeze(torch.FloatTensor(state), 0)
+        action_values = self.eval_net.forward(state)
+        return action_values
+
     def add_step(self, cur_state, action, reward, done, next_state):
         # 变量拼接
         step = np.hstack([cur_state, action, reward, done, next_state])
@@ -125,19 +135,18 @@ class DQN(object):
 
     def learn(self):
         bench = self.replay_buff.get_bench()
-        if not bench:
+        if bench is None:
             return
         # 参数复制
         if self.eval_step % self.eval_every == 0:
             self.target_net.load_state_dict(self.eval_net.state_dict())
         # 更新训练步数
         self.eval_step += 1
-        print('learn')
         # 拆分bench
         bench_cur_states = torch.FloatTensor(bench[:, :self.n_states])
         bench_actions = torch.LongTensor(bench[:, self.n_states: self.n_states + 1].astype(int))
-        bench_rewards = torch.FloatTensor(bench[:, self.n_states + 1: n_states + 2])
-        bench_dones = torch.FloatTensor(bench[:, self.n_states + 2: self.n_states + 3]).astype(int) # 将是否结束按int类型读取，结束则为1，否则为0
+        bench_rewards = torch.FloatTensor(bench[:, self.n_states + 1: self.n_states + 2])
+        bench_dones = torch.FloatTensor(bench[:, self.n_states + 2: self.n_states + 3].astype(int)) # 将是否结束按int类型读取，结束则为1，否则为0
         bench_next_states = torch.FloatTensor(bench[:, -self.n_states:])
         # 计算误差
         q_eval = self.eval_net(bench_cur_states)
@@ -153,30 +162,34 @@ class DQN(object):
         
 
 def rl_loop():
-    MAX_EPISODES  = 20
+    MAX_EPISODES  = 80
     env = gym.make('Maze-v0')
     n_states = reduce(np.multiply, env.observation_space.shape)
     n_actions = env.action_space.n
     agent = DQN(n_states, n_actions)
-
-    for ep in trange(MAX_EPISODES):
+    # train
+    for ep in range(MAX_EPISODES):
         cur_state = env.reset()
         cur_state = cur_state.reshape((n_states))
         done = False
         while not done:
             action = agent.get_action(cur_state)
-            next_state, reward, done, _ = env.step(action)
+            next_state, reward, done, info = env.step(action)
             next_state = next_state.reshape((n_states))
             agent.add_step(cur_state, action, reward, done, next_state)
             agent.learn()
             cur_state = next_state
+        print('ep: ', ep, ' steps: ', info, ' final reward: ', reward)
     print('done')
     cur_state = env.reset()
     cur_state = cur_state.reshape((n_states))
     done = False
+    # test 
     while not done:
         action = agent.get_action(cur_state)
-        next_state, reward, done, _ = env.step(action)
+        action_values = agent.get_raw_out(cur_state)
+        print(action_values)
+        next_state, reward, done, info = env.step(action)
         next_state = next_state.reshape((n_states))
         agent.add_step(cur_state, action, reward, done, next_state)
         agent.learn()
