@@ -3,102 +3,32 @@
 """
 @author: Jiawei Wu
 @create time: 2019-12-04 10:36
-@edit time: 2019-12-06 16:18
+@edit time: 2019-12-06 23:06
 @file: ./DDPG_torch.py
 """
 import numpy as np
 from Utils import ExpReplay, soft_update
-import torch.nn.functional as F
 import torch.nn as nn
 import torch
 from torch.autograd import Variable
-import gym
 import time
 
 CUDA = torch.cuda.is_available()
-class Anet(nn.Module):
-    """定义Actor的网络结构"""
-
-    def __init__(self, n_states, n_actions, a_bound):
-        """
-        定义隐藏层和输出层参数
-        @param n_obs: number of observations
-        @param n_actions: number of actions
-        @param a_bound: bound of actino
-        """
-        super(Anet, self).__init__()
-        n_neurons = 32
-        self.fc1 = nn.Linear(n_states, n_neurons)
-        self.fc1.weight.data.normal_(0, 0.1)
-        self.out = nn.Linear(n_neurons, n_actions)
-        self.out.weight.data.normal_(0, 0.1)
-        if CUDA:
-            self.bound = torch.FloatTensor(a_bound).cuda()
-        else:
-            self.bound = torch.FloatTensor(a_bound)
-
-    def forward(self, x):
-        """
-        定义网络结构: 第一层网络->ReLU激活->输出层->tanh激活->softmax->输出
-        """
-        x = x.cuda() if CUDA else x
-        x = self.fc1(x)
-        x = F.relu(x)
-        x = self.out(x)
-        action_value = F.tanh(x)
-        action_value = action_value * self.bound
-        return action_value
 
 
-class Cnet(nn.Module):
-    """定义Critic的网络结构"""
-
-    def __init__(self, n_states, n_actions):
-        """
-        定义隐藏层和输出层参数
-        @param n_obs: number of observations
-        @param n_actions: number of actions
-        """
-        super(Cnet, self).__init__()
-        n_neurons = 30
-        self.fc_state = nn.Linear(n_states, n_neurons)
-        self.fc_state.weight.data.normal_(0, 0.1)
-        self.fc_action = nn.Linear(n_actions, n_neurons)
-        self.fc_action.weight.data.normal_(0, 0.1)
-        self.out = nn.Linear(n_neurons, 1)
-        self.out.weight.data.normal_(0, 0.1)
-
-    def forward(self, s, a):
-        """
-        定义网络结构: 
-        state -> 全连接   -·-->  中间层 -> 全连接 -> ReLU -> Q值
-        action -> 全连接  /相加，偏置
-        """
-        s, a = (s.cuda(), a.cuda()) if CUDA else (s, a)
-        x_s = self.fc_state(s)
-        x_a = self.fc_action(a)
-        x = F.relu(x_s+x_a)
-        actions_value = self.out(x)
-        return actions_value
-
-
-class DDPG(object):
+class DDPGBase(object):
     def __init__(self, n_states, n_actions, a_bound=1, lr_a=0.001, lr_c=0.002, tau=0.01, gamma=0.9):
         # 参数复制
         self.n_states, self.n_actions = n_states, n_actions
-        self.tau, self.gamma = tau, gamma
+        self.tau, self.gamma, self.bound = tau, gamma, a_bound
         # 初始化训练指示符
         self.start_train = False
         self.mem_size = 0
         # 创建经验回放池
         self.memory = ExpReplay(n_states,  n_actions, MAX_MEM=10000)  # s, a, r, d, s_
         # 创建神经网络并指定优化器
-        self.actor_eval = Anet(n_states, n_actions, a_bound)
-        self.actor_target = Anet(n_states, n_actions, a_bound)
+        self._build_net()
         self.actor_optim = torch.optim.Adam(self.actor_eval.parameters(), lr=lr_a)
-
-        self.critic_eval = Cnet(n_states, n_actions)
-        self.critic_target = Cnet(n_states, n_actions)
         self.critic_optim = torch.optim.Adam(self.critic_eval.parameters(), lr=lr_c)
         # 约定损失函数
         self.mse_loss = nn.MSELoss()
@@ -106,6 +36,9 @@ class DDPG(object):
         if CUDA:
             self.cuda()
 
+    def _build_net(self):
+        raise TypeError("Network not Implemented")
+    
     def choose_action(self, s):
         """给定当前状态，获取选择的动作"""
         s = torch.unsqueeze(torch.FloatTensor(s), 0)
@@ -155,52 +88,3 @@ class DDPG(object):
         self.actor_target.cuda()
         self.critic_eval.cuda()
         self.critic_target.cuda()
-
-
-def rl_loop():
-    ENV_NAME = 'Pendulum-v0'
-    RENDER = False
-    MAX_EPISODES = 10000
-    MAX_EP_STEPS = 200
-
-    env = gym.make(ENV_NAME)
-    env = env.unwrapped
-    env.seed(1)
-    s_dim = env.observation_space.shape[0]
-    a_dim = env.action_space.shape[0]
-    a_bound = env.action_space.high
-
-    ddpg = DDPG(s_dim, a_dim, a_bound)
-    var = 3  # control exploration
-    t1 = time.time()
-    for i in range(MAX_EPISODES):
-        s = env.reset()
-        ep_reward = 0
-        for j in range(MAX_EP_STEPS):
-            if RENDER:
-                env.render()
-
-            # Add exploration noise
-            a = ddpg.choose_action(s)
-            a = np.clip(np.random.normal(a, var), -2, 2)    # add randomness to action selection for exploration
-            s_, r, done, info = env.step(a)
-
-            ddpg.add_step(s, a, r / 10, done, s_)
-
-            if ddpg.mem_size > 10000:
-                var *= .9995    # decay the action randomness
-                ddpg.learn()
-
-            s = s_
-            ep_reward += r
-            if j == MAX_EP_STEPS-1:
-                print('Episode:', i, ' Reward: %i' % int(ep_reward), 'Explore: %.2f' % var, )
-                if ep_reward > -300:
-                    RENDER = True
-                break
-
-    print('Running time: ', time.time() - t1)
-
-
-if __name__ == '__main__':
-    rl_loop()
