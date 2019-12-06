@@ -3,14 +3,13 @@
 """
 @author: Jiawei Wu
 @create time: 2019-12-04 10:36
-@edit time: 2019-12-06 23:06
+@edit time: 2019-12-06 23:11
 @file: ./DDPG_torch.py
 """
 import numpy as np
 from Utils import ExpReplay, soft_update
 import torch.nn as nn
 import torch
-from torch.autograd import Variable
 import time
 
 CUDA = torch.cuda.is_available()
@@ -38,7 +37,7 @@ class DDPGBase(object):
 
     def _build_net(self):
         raise TypeError("Network not Implemented")
-    
+
     def choose_action(self, s):
         """给定当前状态，获取选择的动作"""
         s = torch.unsqueeze(torch.FloatTensor(s), 0)
