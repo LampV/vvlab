@@ -3,12 +3,15 @@
 """
 @author: Jiawei Wu
 @create time: 2019-12-04 10:40
-@edit time: 2019-12-05 11:00
+@edit time: 2019-12-06 10:10
 @file: /exp_replay.py
 """
 
-
+import torch
+from torch.autograd import Variable
 import numpy as np
+
+
 class ExpReplay:
     def __init__(self, n_states, n_actions, MAX_MEM=2000, MIN_MEM=None, BENCH_SIZE=None):
         """
@@ -20,6 +23,7 @@ class ExpReplay:
         """
         # 保证参数被定义
         self.n_states, self.n_actions = n_states, n_actions
+        self.dim = n_states * 2 + n_actions + 2
         if not MIN_MEM:
             MIN_MEM = MAX_MEM // 10
         if not BENCH_SIZE:
@@ -33,11 +37,12 @@ class ExpReplay:
 
     def add_step(self, step):
         """为经验回放池增加一步，一步通常包括s, a, r, d, s_"""
-        self.expreplay_pool = np.append(self.expreplay_pool, step).reshape(-1, )
-        if self.expreplay_pool.size > self.max_mem:
+        self.expreplay_pool = np.append(self.expreplay_pool, step).reshape(-1, self.dim)
+        if self.expreplay_pool.shape[0] > self.max_mem:
             # 如果超了，随机删除10%
             del_indexs = np.random.choice(self.max_mem, self.max_mem // 10)
-            np.delete(self.expreplay_pool, del_indexs, axis=1)
+            np.delete(self.expreplay_pool, del_indexs, axis=0)
+            a = 1
 
     def get_bench(self, BENCH_SIZE=None):
         """
@@ -62,6 +67,21 @@ class ExpReplay:
             cur_states = bench[:, :self.n_states]
             actions = bench[:, self.n_states: self.n_states + self.n_actions].astype(int)
             rewards = bench[:, self.n_states + self.n_actions: self.n_states + self.n_actions + 1]
-            dones = bench[:, self.n_states + self.n_actions + 1: self.n_states + self.n_actions + 2].astype(int) # 将是否结束按int类型读取，结束则为1，否则为0
-            states = bench[:, -self.n_states:]
-            return cur_states, actions, rewards, dones, states
+            dones = bench[:, self.n_states + self.n_actions + 1: self.n_states + self.n_actions + 2].astype(int)  # 将是否结束按int类型读取，结束则为1，否则为0
+            nexe_states = bench[:, -self.n_states:]
+            return cur_states, actions, rewards, dones, nexe_states
+
+    def get_bench_splited_tensor(self, BENCH_SIZE=None, volatile=False, requires_grad=False, dtype=torch.FloatTensor):
+        """将bench分割并转换为tensor之后返回"""
+        bench = self.get_bench_splited(BENCH_SIZE)
+        if bench is None:
+            return bench
+        else:
+            cur_states, actions, rewards, dones, nexe_states = bench
+            cur_states = Variable(torch.from_numpy(cur_states), volatile=volatile, requires_grad=requires_grad).type(dtype).cuda()
+            actions = Variable(torch.from_numpy(actions), volatile=volatile, requires_grad=requires_grad).type(dtype).cuda()
+            rewards = Variable(torch.from_numpy(rewards), volatile=volatile, requires_grad=requires_grad).type(dtype).cuda()
+            dones = Variable(torch.from_numpy(dones), volatile=volatile, requires_grad=requires_grad).type(dtype).cuda()
+            nexe_states = Variable(torch.from_numpy(nexe_states), volatile=volatile, requires_grad=requires_grad).type(dtype).cuda()
+
+            return cur_states, actions, rewards, dones, nexe_states
