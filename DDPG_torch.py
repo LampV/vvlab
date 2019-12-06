@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2019-12-04 10:36
-@edit time: 2019-12-06 15:55
+@edit time: 2019-12-06 16:18
 @file: ./DDPG_torch.py
 """
 import numpy as np
@@ -90,27 +90,26 @@ class DDPG(object):
         # 初始化训练指示符
         self.start_train = False
         self.mem_size = 0
-        # 创建经验回放池`
+        # 创建经验回放池
         self.memory = ExpReplay(n_states,  n_actions, MAX_MEM=10000)  # s, a, r, d, s_
-        # 创建神经网络
+        # 创建神经网络并指定优化器
         self.actor_eval = Anet(n_states, n_actions, a_bound)
         self.actor_target = Anet(n_states, n_actions, a_bound)
+        self.actor_optim = torch.optim.Adam(self.actor_eval.parameters(), lr=lr_a)
+
         self.critic_eval = Cnet(n_states, n_actions)
         self.critic_target = Cnet(n_states, n_actions)
+        self.critic_optim = torch.optim.Adam(self.critic_eval.parameters(), lr=lr_c)
+        # 约定损失函数
+        self.mse_loss = nn.MSELoss()
+        # 开启cuda
         if CUDA:
             self.cuda()
-        # 指定优化器和损失函数
-        self.actor_optim = torch.optim.Adam(self.actor_eval.parameters(), lr=lr_a)
-        self.critic_optim = torch.optim.Adam(self.critic_eval.parameters(), lr=lr_c)
-        self.mse_loss = nn.MSELoss()
-        self.store = np.zeros((10000, n_states * 2 + n_actions + 2), dtype=np.float32)
 
     def choose_action(self, s):
         """给定当前状态，获取选择的动作"""
         s = torch.unsqueeze(torch.FloatTensor(s), 0)
         action = self.actor_eval.forward(s).detach().cpu()
-        # action = np.argmax(actions)
-        # action = np.random.choice(np.array([0,1,2,3]), p=actions[0])
         return action[0]
 
     def learn(self):
@@ -120,7 +119,6 @@ class DDPG(object):
         soft_update(self.critic_target, self.critic_eval, self.tau)
 
         # 获取bench并拆解
-        # bench = self.memory.get_bench_splited_tensor(32)
         bench = self.memory.get_bench_splited_tensor(CUDA, 32)
         if bench is None:
             return
@@ -188,7 +186,6 @@ def rl_loop():
             s_, r, done, info = env.step(a)
 
             ddpg.add_step(s, a, r / 10, done, s_)
-            # ddpg.store_transition(s, a, r / 10, done, s_)
 
             if ddpg.mem_size > 10000:
                 var *= .9995    # decay the action randomness
