@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2019-11-17 11:23
-@edit time: 2019-12-05 11:00
+@edit time: 2019-12-06 22:51
 @file: /dqn.py
 @desc: 创建DQN对象
 """
@@ -17,6 +17,9 @@ import wjwgym
 from functools import reduce
 from tqdm import trange
 from Utils import ExpReplay
+
+CUDA = torch.cuda.is_available()
+
 
 class Net(nn.Module):
     """定义DQN的网络结构"""
@@ -38,10 +41,12 @@ class Net(nn.Module):
         """
         定义网络结构: 第一层网络->ReLU激活->输出层->softmax->输出
         """
+        if CUDA:
+            x = x.cuda()
         x = self.fc1(x)
         x = F.relu(x)
         x = self.out(x)
-        action_values = F.softmax(x)
+        action_values = F.softmax(x, dim=1)
         return action_values
 
 
@@ -53,10 +58,10 @@ class DQN(object):
         @param n_actions: number of actions
         """
         # DQN 的超参
-        self.gamma = discount_rate # 未来折扣率
+        self.gamma = discount_rate  # 未来折扣率
 
         self.epsilon = 0.9
-        self.epsilon_min = 0.1
+        self.epsilon_min = 0.01
         self.epsilon_decay = 0.9
         self.eval_every = 10
         # 网络创建
@@ -64,12 +69,14 @@ class DQN(object):
         self.n_actions = n_actions
         self.eval_net = Net(n_states, n_actions)
         self.target_net = Net(n_states, n_actions)
-        self.replay_buff = ExpReplay(n_states * 2 + 3, 200)
+        self.replay_buff = ExpReplay(n_states, 1, MAX_MEM=200)
         # 定义优化器和损失函数
         self.optimizer = torch.optim.Adam(self.eval_net.parameters(), lr=learning_rate)
         self.loss_func = nn.MSELoss()
         # 记录步数用于同步参数
         self.eval_step = 0
+        if CUDA:
+            self.cuda()
 
     def get_action(self, state):
         # epsilon update
@@ -81,7 +88,7 @@ class DQN(object):
         else:
             # greedy
             state = torch.unsqueeze(torch.FloatTensor(state), 0)
-            action_values = self.eval_net.forward(state)
+            action_values = self.eval_net.forward(state).cpu()
             return action_values.data.numpy().argmax()
 
     def get_raw_out(self, state):
@@ -95,7 +102,7 @@ class DQN(object):
         self.replay_buff.add_step(step)
 
     def learn(self):
-        bench = self.replay_buff.get_bench()
+        bench = self.replay_buff.get_bench_splited_tensor(CUDA)
         if bench is None:
             return
         # 参数复制
@@ -104,26 +111,26 @@ class DQN(object):
         # 更新训练步数
         self.eval_step += 1
         # 拆分bench
-        bench_cur_states = torch.FloatTensor(bench[:, :self.n_states])
-        bench_actions = torch.LongTensor(bench[:, self.n_states: self.n_states + 1].astype(int))
-        bench_rewards = torch.FloatTensor(bench[:, self.n_states + 1: self.n_states + 2])
-        bench_dones = torch.FloatTensor(bench[:, self.n_states + 2: self.n_states + 3].astype(int)) # 将是否结束按int类型读取，结束则为1，否则为0
-        bench_next_states = torch.FloatTensor(bench[:, -self.n_states:])
+        bench_cur_states, bench_actions, bench_rewards, bench_dones, bench_next_states = bench
         # 计算误差
         q_eval = self.eval_net(bench_cur_states)
-        q_eval = q_eval.gather(1, bench_actions)  # shape (batch, 1)
+        q_eval = q_eval.gather(1, bench_actions.long())  # shape (batch, 1)
         q_next = self.target_net(bench_next_states).detach()     # detach from graph, don't backpropagate
         # 如果done，则不考虑未来
-        q_target = bench_rewards + self.gamma * (1 - bench_dones) * q_next.max(1)[0].view(len(bench), 1)   # shape (batch, 1)
+        q_target = bench_rewards + self.gamma * (1 - bench_dones) * q_next.max(1)[0].view(len(bench_next_states), 1)   # shape (batch, 1)
         loss = self.loss_func(q_eval, q_target)
         # 网络更新
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
-        
+
+    def cuda(self):
+        self.eval_net.cuda()
+        self.target_net.cuda()
+
 
 def rl_loop():
-    MAX_EPISODES  = 200
+    MAX_EPISODES = 200
     env = gym.make('Maze-v0')
     n_states = reduce(np.multiply, env.observation_space.shape)
     n_actions = env.action_space.n
@@ -145,8 +152,8 @@ def rl_loop():
     cur_state = env.reset()
     cur_state = cur_state.reshape((n_states))
     done = False
-    
-    # test 
+
+    # test
     while not done:
         action = agent.get_action(cur_state)
         action_values = agent.get_raw_out(cur_state)
@@ -157,6 +164,6 @@ def rl_loop():
         agent.learn()
         cur_state = next_state
 
+
 if __name__ == '__main__':
     rl_loop()
-    
