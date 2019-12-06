@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2019-12-04 10:40
-@edit time: 2019-12-06 10:10
+@edit time: 2019-12-06 14:47
 @file: /exp_replay.py
 """
 
@@ -42,7 +42,6 @@ class ExpReplay:
             # 如果超了，随机删除10%
             del_indexs = np.random.choice(self.max_mem, self.max_mem // 10)
             np.delete(self.expreplay_pool, del_indexs, axis=0)
-            a = 1
 
     def get_bench(self, BENCH_SIZE=None):
         """
@@ -67,7 +66,7 @@ class ExpReplay:
             cur_states = bench[:, :self.n_states]
             actions = bench[:, self.n_states: self.n_states + self.n_actions].astype(int)
             rewards = bench[:, self.n_states + self.n_actions: self.n_states + self.n_actions + 1]
-            dones = bench[:, self.n_states + self.n_actions + 1: self.n_states + self.n_actions + 2].astype(int)  # 将是否结束按int类型读取，结束则为1，否则为0
+            dones = bench[:, -self.n_states - 1: -self.n_states].astype(int)  # 将是否结束按int类型读取，结束则为1，否则为0
             nexe_states = bench[:, -self.n_states:]
             return cur_states, actions, rewards, dones, nexe_states
 
@@ -85,3 +84,9 @@ class ExpReplay:
             nexe_states = Variable(torch.from_numpy(nexe_states), volatile=volatile, requires_grad=requires_grad).type(dtype).cuda()
 
             return cur_states, actions, rewards, dones, nexe_states
+
+def soft_update(target, source, tau):
+    for target_param, param in zip(target.parameters(), source.parameters()):
+        target_param.data.copy_(
+            target_param.data * (1.0 - tau) + param.data * tau
+        )
