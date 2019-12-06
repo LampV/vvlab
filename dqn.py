@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2019-11-17 11:23
-@edit time: 2019-11-28 10:30
+@edit time: 2019-12-05 11:00
 @file: /dqn.py
 @desc: 创建DQN对象
 """
@@ -16,46 +16,7 @@ import gym
 import wjwgym
 from functools import reduce
 from tqdm import trange
-
-class ExpReplay:
-    def __init__(self, dim, MAX_MEM=2000, MIN_MEM=None, BENCH_SIZE=None):
-        """
-        定义经验回放池的参数
-        @param dim: Dimension of step (state, action, reward, done, next_state)
-        @param MAX_MEM: Maximum memory
-        @param MIN_MEM: Minimum memory，超过这个数目才返回bench
-        @param BENCH_SIZE: Benchmark size
-        """
-        # 保证参数被定义
-        self.dim = dim
-        if not MIN_MEM:
-            MIN_MEM = MAX_MEM // 10
-        if not BENCH_SIZE:
-            BENCH_SIZE = MIN_MEM // 2
-        self.max_mem = MAX_MEM
-        self.min_mem = MIN_MEM
-        self.bench_size = BENCH_SIZE
-        # 定义经验回放池
-        self.expreplay_pool = np.array([[]])
-        self.mem_count = 0
-
-    # TODO 修复add_step失败的问题
-    def add_step(self, step):
-        self.expreplay_pool = np.append(self.expreplay_pool, step).reshape(-1, self.dim)
-        if self.expreplay_pool.size > self.max_mem:
-            # 如果超了，随机删除10%
-            del_indexs = np.random.choice(self.max_mem, self.max_mem // 10)
-            np.delete(self.expreplay_pool, del_indexs, axis=1)
-
-    def get_bench(self, BENCH_SIZE=None):
-        bench_size = BENCH_SIZE if BENCH_SIZE else self.bench_size
-        if self.expreplay_pool.shape[0] > self.min_mem:
-            # 比最小输出阈值大的时候才返回bench
-            choice_indexs = np.random.choice(self.expreplay_pool.shape[0], bench_size)
-            return self.expreplay_pool[choice_indexs]
-        else:
-            return None
-
+from Utils import ExpReplay
 
 class Net(nn.Module):
     """定义DQN的网络结构"""
@@ -162,7 +123,7 @@ class DQN(object):
         
 
 def rl_loop():
-    MAX_EPISODES  = 80
+    MAX_EPISODES  = 200
     env = gym.make('Maze-v0')
     n_states = reduce(np.multiply, env.observation_space.shape)
     n_actions = env.action_space.n
@@ -184,6 +145,7 @@ def rl_loop():
     cur_state = env.reset()
     cur_state = cur_state.reshape((n_states))
     done = False
+    
     # test 
     while not done:
         action = agent.get_action(cur_state)
