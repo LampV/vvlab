@@ -15,7 +15,7 @@ from torch.autograd import Variable
 import gym
 import time
 
-
+CUDA = torch.cuda.is_available()
 class Anet(nn.Module):
     """定义Actor的网络结构"""
 
@@ -32,13 +32,16 @@ class Anet(nn.Module):
         self.fc1.weight.data.normal_(0, 0.1)
         self.out = nn.Linear(n_neurons, n_actions)
         self.out.weight.data.normal_(0, 0.1)
-        self.bound = torch.FloatTensor(a_bound).cuda()
+        if CUDA:
+            self.bound = torch.FloatTensor(a_bound).cuda()
+        else:
+            self.bound = torch.FloatTensor(a_bound)
 
     def forward(self, x):
         """
         定义网络结构: 第一层网络->ReLU激活->输出层->tanh激活->softmax->输出
         """
-        x = x.cuda()
+        x = x.cuda() if CUDA else x
         x = self.fc1(x)
         x = F.relu(x)
         x = self.out(x)
@@ -71,7 +74,7 @@ class Cnet(nn.Module):
         state -> 全连接   -·-->  中间层 -> 全连接 -> ReLU -> Q值
         action -> 全连接  /相加，偏置
         """
-        s, a = s.cuda(), a.cuda()
+        s, a = (s.cuda(), a.cuda()) if CUDA else (s, a)
         x_s = self.fc_state(s)
         x_a = self.fc_action(a)
         x = F.relu(x_s+x_a)
@@ -94,7 +97,8 @@ class DDPG(object):
         self.actor_target = Anet(n_states, n_actions, a_bound)
         self.critic_eval = Cnet(n_states, n_actions)
         self.critic_target = Cnet(n_states, n_actions)
-        self.cuda()
+        if CUDA:
+            self.cuda()
         # 指定优化器和损失函数
         self.actor_optim = torch.optim.Adam(self.actor_eval.parameters(), lr=lr_a)
         self.critic_optim = torch.optim.Adam(self.critic_eval.parameters(), lr=lr_c)
@@ -117,7 +121,7 @@ class DDPG(object):
 
         # 获取bench并拆解
         # bench = self.memory.get_bench_splited_tensor(32)
-        bench = self.memory.get_bench_splited_tensor(32)
+        bench = self.memory.get_bench_splited_tensor(CUDA, 32)
         if bench is None:
             return
         else:

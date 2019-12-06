@@ -70,20 +70,13 @@ class ExpReplay:
             nexe_states = bench[:, -self.n_states:]
             return cur_states, actions, rewards, dones, nexe_states
 
-    def get_bench_splited_tensor(self, BENCH_SIZE=None, volatile=False, requires_grad=False, dtype=torch.FloatTensor):
+    def get_bench_splited_tensor(self, CUDA, BENCH_SIZE=None, dtype=torch.FloatTensor):
         """将bench分割并转换为tensor之后返回"""
         bench = self.get_bench_splited(BENCH_SIZE)
         if bench is None:
             return bench
         else:
-            cur_states, actions, rewards, dones, nexe_states = bench
-            cur_states = Variable(torch.from_numpy(cur_states), volatile=volatile, requires_grad=requires_grad).type(dtype).cuda()
-            actions = Variable(torch.from_numpy(actions), volatile=volatile, requires_grad=requires_grad).type(dtype).cuda()
-            rewards = Variable(torch.from_numpy(rewards), volatile=volatile, requires_grad=requires_grad).type(dtype).cuda()
-            dones = Variable(torch.from_numpy(dones), volatile=volatile, requires_grad=requires_grad).type(dtype).cuda()
-            nexe_states = Variable(torch.from_numpy(nexe_states), volatile=volatile, requires_grad=requires_grad).type(dtype).cuda()
-
-            return cur_states, actions, rewards, dones, nexe_states
+            return (Variable(torch.from_numpy(ndarray)).type(dtype).cuda() for ndarray in bench) if CUDA else (Variable(torch.from_numpy(ndarray)).type(dtype) for ndarray in bench)
 
 def soft_update(target, source, tau):
     for target_param, param in zip(target.parameters(), source.parameters()):
