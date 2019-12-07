@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2019-11-25 11:08
-@edit time: 2019-11-26 15:53
+@edit time: 2019-12-06 23:09
 @file: /wjwgym-home/setup.py
 """
 
@@ -29,6 +29,6 @@ setup(
     description='OpenAI Gym test models',
     long_description='OpenAI Gym test models',
     keywords='openAI gym',
-    install_requires=['numpy', 'gym'],
+    install_requires=['numpy', 'gym', 'torch'],
     extras_require={},
 )
