@@ -3,15 +3,13 @@
 """
 @author: Jiawei Wu
 @create time: 2019-12-04 10:36
-@edit time: 2019-12-06 23:11
+@edit time: 2019-12-07 20:32
 @file: ./DDPG_torch.py
 """
 import numpy as np
-from Utils import ExpReplay, soft_update
+from wjwgym.agents.Utils import ExpReplay, soft_update
 import torch.nn as nn
 import torch
-import time
-
 CUDA = torch.cuda.is_available()
 
 
