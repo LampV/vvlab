@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2019-12-04 10:36
-@edit time: 2019-12-07 20:32
+@edit time: 2019-12-07 21:49
 @file: ./DDPG_torch.py
 """
 import numpy as np
@@ -14,15 +14,17 @@ CUDA = torch.cuda.is_available()
 
 
 class DDPGBase(object):
-    def __init__(self, n_states, n_actions, a_bound=1, lr_a=0.001, lr_c=0.002, tau=0.01, gamma=0.9):
+    def __init__(self, n_states, n_actions, a_bound=1, lr_a=0.001, lr_c=0.002, tau=0.01, gamma=0.9, 
+        MAX_MEM=10000, MIN_MEM=None, BENCH_SIZE=32):
         # 参数复制
         self.n_states, self.n_actions = n_states, n_actions
         self.tau, self.gamma, self.bound = tau, gamma, a_bound
+        self.bench_size = BENCH_SIZE
         # 初始化训练指示符
         self.start_train = False
         self.mem_size = 0
         # 创建经验回放池
-        self.memory = ExpReplay(n_states,  n_actions, MAX_MEM=10000)  # s, a, r, d, s_
+        self.memory = ExpReplay(n_states,  n_actions, MAX_MEM=MAX_MEM, MIN_MEM=MIN_MEM)  # s, a, r, d, s_
         # 创建神经网络并指定优化器
         self._build_net()
         self.actor_optim = torch.optim.Adam(self.actor_eval.parameters(), lr=lr_a)
@@ -49,7 +51,7 @@ class DDPGBase(object):
         soft_update(self.critic_target, self.critic_eval, self.tau)
 
         # 获取bench并拆解
-        bench = self.memory.get_bench_splited_tensor(CUDA, 32)
+        bench = self.memory.get_bench_splited_tensor(CUDA, self.bench_size)
         if bench is None:
             return
         else:
