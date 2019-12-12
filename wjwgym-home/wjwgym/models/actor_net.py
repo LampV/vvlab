@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2019-12-06 23:23
-@edit time: 2019-12-07 21:37
+@edit time: 2019-12-12 11:11
 @desc: DDPG中Actor使用的网络
 特点是有一个bound的特殊参数。因为Actor往往只输出一个动作，但是有上下限.
 """
@@ -26,14 +26,15 @@ class SimpleActorNet(nn.Module):
         @param a_bound: action的倍率
         """
         super(SimpleActorNet, self).__init__()
+        self.bound = a_bound
         self.fc1 = nn.Linear(n_states, n_neurons)
         self.fc1.weight.data.normal_(0, 0.1)
         self.out = nn.Linear(n_neurons, n_actions)
         self.out.weight.data.normal_(0, 0.1)
         if CUDA:
-            self.bound = torch.FloatTensor(a_bound).cuda()
+            self.bound = torch.FloatTensor([self.bound]).cuda()
         else:
-            self.bound = torch.FloatTensor(a_bound)
+            self.bound = torch.FloatTensor([self.bound])
 
     def forward(self, x):
         """
