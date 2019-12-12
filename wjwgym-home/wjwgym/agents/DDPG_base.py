@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2019-12-04 10:36
-@edit time: 2019-12-12 10:47
+@edit time: 2019-12-12 15:46
 @file: ./DDPG_torch.py
 """
 import numpy as np
@@ -39,10 +39,10 @@ class DDPGBase(object):
             self.cuda()
 
     def _build_net(self):
-        raise TypeError("Network not Implemented")
+        raise TypeError("网络构建函数未被实现")
 
-    def _build_noise(self):
-        self.noise = OUProcess(n_actions)
+    def _build_noise(self, *args):
+        raise TypeError("噪声发生器构建函数未被实现")
 
     def _get_action(self, s):
         """给定当前状态，获取选择的动作"""
@@ -69,7 +69,6 @@ class DDPGBase(object):
         else:
             self.start_train = True
         bench_cur_states, bench_actions, bench_rewards, bench_dones, bench_next_states = bench
-        # TODO 统一bench_size大小写
         # 计算target_q，指导cirtic更新
         # 通过a_target和next_state计算target网络会选择的下一动作 next_action；通过target_q和next_states、刚刚计算的next_actions计算下一状态的q_values
         target_q_next = self.critic_target(bench_next_states, self.actor_target(bench_next_states))
