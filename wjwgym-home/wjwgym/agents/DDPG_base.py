@@ -3,10 +3,11 @@
 """
 @author: Jiawei Wu
 @create time: 2019-12-04 10:36
-@edit time: 2019-12-07 21:49
+@edit time: 2019-12-12 10:47
 @file: ./DDPG_torch.py
 """
 import numpy as np
+from ./ou.py import OUProcess
 from wjwgym.agents.Utils import ExpReplay, soft_update
 import torch.nn as nn
 import torch
@@ -27,6 +28,8 @@ class DDPGBase(object):
         self.memory = ExpReplay(n_states,  n_actions, MAX_MEM=MAX_MEM, MIN_MEM=MIN_MEM)  # s, a, r, d, s_
         # 创建神经网络并指定优化器
         self._build_net()
+        # 指定噪声发生器
+        self._build_noise()
         self.actor_optim = torch.optim.Adam(self.actor_eval.parameters(), lr=lr_a)
         self.critic_optim = torch.optim.Adam(self.critic_eval.parameters(), lr=lr_c)
         # 约定损失函数
@@ -38,11 +41,20 @@ class DDPGBase(object):
     def _build_net(self):
         raise TypeError("Network not Implemented")
 
-    def choose_action(self, s):
+    def _build_noise(self):
+        self.noise = OUProcess(n_actions)
+
+    def _get_action(self, s):
         """给定当前状态，获取选择的动作"""
         s = torch.unsqueeze(torch.FloatTensor(s), 0)
-        action = self.actor_eval.forward(s).detach().cpu()
-        return action[0]
+        action = self.actor_eval.forward(s).detach().cpu().numpy()
+        return action
+
+    def get_action(self, s):
+        return self._get_action(s)
+
+    def choose_action(self, s):
+        return self._get_action(s)
 
     def learn(self):
         """训练网络"""
@@ -57,7 +69,7 @@ class DDPGBase(object):
         else:
             self.start_train = True
         bench_cur_states, bench_actions, bench_rewards, bench_dones, bench_next_states = bench
-
+        # TODO 统一bench_size大小写
         # 计算target_q，指导cirtic更新
         # 通过a_target和next_state计算target网络会选择的下一动作 next_action；通过target_q和next_states、刚刚计算的next_actions计算下一状态的q_values
         target_q_next = self.critic_target(bench_next_states, self.actor_target(bench_next_states))
