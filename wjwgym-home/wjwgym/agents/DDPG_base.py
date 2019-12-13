@@ -3,20 +3,21 @@
 """
 @author: Jiawei Wu
 @create time: 2019-12-04 10:36
-@edit time: 2019-12-12 15:46
+@edit time: 2019-12-13 16:59
 @file: ./DDPG_torch.py
 """
 import numpy as np
-from ./ou.py import OUProcess
+from wjwgym.agents.ou import OUProcess
 from wjwgym.agents.Utils import ExpReplay, soft_update
 import torch.nn as nn
 import torch
+from torch.utils.tensorboard import SummaryWriter
 CUDA = torch.cuda.is_available()
 
 
 class DDPGBase(object):
     def __init__(self, n_states, n_actions, a_bound=1, lr_a=0.001, lr_c=0.002, tau=0.01, gamma=0.9, 
-        MAX_MEM=10000, MIN_MEM=None, BENCH_SIZE=32):
+        MAX_MEM=10000, MIN_MEM=None, BENCH_SIZE=32, **kwargs):
         # 参数复制
         self.n_states, self.n_actions = n_states, n_actions
         self.tau, self.gamma, self.bound = tau, gamma, a_bound
@@ -30,6 +31,11 @@ class DDPGBase(object):
         self._build_net()
         # 指定噪声发生器
         self._build_noise()
+        # 指定summary writer
+        if 'summary_path' in kwargs:
+            self._build_summary_writer(kwargs['summary_path'])
+        else:
+            self._build_summary_writer()
         self.actor_optim = torch.optim.Adam(self.actor_eval.parameters(), lr=lr_a)
         self.critic_optim = torch.optim.Adam(self.critic_eval.parameters(), lr=lr_c)
         # 约定损失函数
@@ -43,6 +49,15 @@ class DDPGBase(object):
 
     def _build_noise(self, *args):
         raise TypeError("噪声发生器构建函数未被实现")
+
+    def _build_summary_writer(self, summary_path=None):
+        if summary_path:
+            self.summary_writer = SummaryWriter(log_dir=summary_path)
+        else:
+            self.summary_writer = SummaryWriter()
+            
+    def get_summary_writer(self):
+        return self.summary_writer
 
     def _get_action(self, s):
         """给定当前状态，获取选择的动作"""
@@ -65,7 +80,7 @@ class DDPGBase(object):
         # 获取bench并拆解
         bench = self.memory.get_bench_splited_tensor(CUDA, self.bench_size)
         if bench is None:
-            return
+            return None
         else:
             self.start_train = True
         bench_cur_states, bench_actions, bench_rewards, bench_dones, bench_next_states = bench
@@ -87,6 +102,7 @@ class DDPGBase(object):
         self.actor_optim.zero_grad()
         loss_a.backward()
         self.actor_optim.step()
+        return loss_a.detach().cpu().numpy()[0]
 
     def add_step(self, s, a, r, d, s_):
         step = np.hstack((s.reshape(-1), a, [r], [d], s_.reshape(-1)))
