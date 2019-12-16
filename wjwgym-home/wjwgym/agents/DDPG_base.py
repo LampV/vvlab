@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2019-12-04 10:36
-@edit time: 2019-12-13 16:59
+@edit time: 2019-12-16 17:10
 @file: ./DDPG_torch.py
 """
 import numpy as np
@@ -17,11 +17,11 @@ CUDA = torch.cuda.is_available()
 
 class DDPGBase(object):
     def __init__(self, n_states, n_actions, a_bound=1, lr_a=0.001, lr_c=0.002, tau=0.01, gamma=0.9, 
-        MAX_MEM=10000, MIN_MEM=None, BENCH_SIZE=32, **kwargs):
+        MAX_MEM=10000, MIN_MEM=None, BATCH_SIZE=32, **kwargs):
         # 参数复制
         self.n_states, self.n_actions = n_states, n_actions
         self.tau, self.gamma, self.bound = tau, gamma, a_bound
-        self.bench_size = BENCH_SIZE
+        self.batch_size = BATCH_SIZE
         # 初始化训练指示符
         self.start_train = False
         self.mem_size = 0
@@ -77,32 +77,32 @@ class DDPGBase(object):
         soft_update(self.actor_target, self.actor_eval, self.tau)
         soft_update(self.critic_target, self.critic_eval, self.tau)
 
-        # 获取bench并拆解
-        bench = self.memory.get_bench_splited_tensor(CUDA, self.bench_size)
-        if bench is None:
+        # 获取batch并拆解
+        batch = self.memory.get_batch_splited_tensor(CUDA, self.batch_size)
+        if batch is None:
             return None
         else:
             self.start_train = True
-        bench_cur_states, bench_actions, bench_rewards, bench_dones, bench_next_states = bench
+        batch_cur_states, batch_actions, batch_rewards, batch_dones, batch_next_states = batch
         # 计算target_q，指导cirtic更新
         # 通过a_target和next_state计算target网络会选择的下一动作 next_action；通过target_q和next_states、刚刚计算的next_actions计算下一状态的q_values
-        target_q_next = self.critic_target(bench_next_states, self.actor_target(bench_next_states))
-        target_q = bench_rewards + self.gamma * (1 - bench_dones) * target_q_next   # 如果done，则不考虑未来
+        target_q_next = self.critic_target(batch_next_states, self.actor_target(batch_next_states))
+        target_q = batch_rewards + self.gamma * (1 - batch_dones) * target_q_next   # 如果done，则不考虑未来
         # 指导critic更新
-        q_value = self.critic_eval(bench_cur_states, bench_actions)
+        q_value = self.critic_eval(batch_cur_states, batch_actions)
         td_error = self.mse_loss(target_q, q_value)
         self.critic_optim.zero_grad()
         td_error.backward()
         self.critic_optim.step()
 
         # 指导actor更新
-        policy_loss = self.critic_eval(bench_cur_states, self.actor_eval(bench_cur_states))  # 用更新的eval网络评估这个动作
+        policy_loss = self.critic_eval(batch_cur_states, self.actor_eval(batch_cur_states))  # 用更新的eval网络评估这个动作
         # 如果 a是一个正确的行为的话，那么它的policy_loss应该更贴近0
         loss_a = -torch.mean(policy_loss)
         self.actor_optim.zero_grad()
         loss_a.backward()
         self.actor_optim.step()
-        return loss_a.detach().cpu().numpy()[0]
+        return loss_a.detach().cpu().numpy()
 
     def add_step(self, s, a, r, d, s_):
         step = np.hstack((s.reshape(-1), a, [r], [d], s_.reshape(-1)))

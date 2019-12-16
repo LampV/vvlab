@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2019-11-17 11:23
-@edit time: 2019-12-07 20:26
+@edit time: 2019-12-16 17:10
 @file: /dqn.py
 @desc: 创建DQN对象
 """
@@ -70,22 +70,22 @@ class DQNBase(object):
         self.replay_buff.add_step(step)
 
     def learn(self):
-        bench = self.replay_buff.get_bench_splited_tensor(CUDA)
-        if bench is None:
+        batch = self.replay_buff.get_batch_splited_tensor(CUDA)
+        if batch is None:
             return
         # 参数复制
         if self.eval_step % self.eval_every == 0:
             self.target_net.load_state_dict(self.eval_net.state_dict())
         # 更新训练步数
         self.eval_step += 1
-        # 拆分bench
-        bench_cur_states, bench_actions, bench_rewards, bench_dones, bench_next_states = bench
+        # 拆分batch
+        batch_cur_states, batch_actions, batch_rewards, batch_dones, batch_next_states = batch
         # 计算误差
-        q_eval = self.eval_net(bench_cur_states)
-        q_eval = q_eval.gather(1, bench_actions.long())  # shape (batch, 1)
-        q_next = self.target_net(bench_next_states).detach()     # detach from graph, don't backpropagate
+        q_eval = self.eval_net(batch_cur_states)
+        q_eval = q_eval.gather(1, batch_actions.long())  # shape (batch, 1)
+        q_next = self.target_net(batch_next_states).detach()     # detach from graph, don't backpropagate
         # 如果done，则不考虑未来
-        q_target = bench_rewards + self.gamma * (1 - bench_dones) * q_next.max(1)[0].view(len(bench_next_states), 1)   # shape (batch, 1)
+        q_target = batch_rewards + self.gamma * (1 - batch_dones) * q_next.max(1)[0].view(len(batch_next_states), 1)   # shape (batch, 1)
         loss = self.loss_func(q_eval, q_target)
         # 网络更新
         self.optimizer.zero_grad()
