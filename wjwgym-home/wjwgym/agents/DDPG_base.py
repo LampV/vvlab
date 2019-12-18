@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2019-12-04 10:36
-@edit time: 2019-12-16 17:10
+@edit time: 2019-12-17 23:16
 @file: ./DDPG_torch.py
 """
 import numpy as np
@@ -80,29 +80,29 @@ class DDPGBase(object):
         # 获取batch并拆解
         batch = self.memory.get_batch_splited_tensor(CUDA, self.batch_size)
         if batch is None:
-            return None
+            return None, None
         else:
             self.start_train = True
-        batch_cur_states, batch_actions, batch_rewards, batch_dones, batch_next_states = batch
+        bench_cur_states, bench_actions, bench_rewards, bench_dones, bench_next_states = bench
         # 计算target_q，指导cirtic更新
         # 通过a_target和next_state计算target网络会选择的下一动作 next_action；通过target_q和next_states、刚刚计算的next_actions计算下一状态的q_values
-        target_q_next = self.critic_target(batch_next_states, self.actor_target(batch_next_states))
-        target_q = batch_rewards + self.gamma * (1 - batch_dones) * target_q_next   # 如果done，则不考虑未来
+        target_q_next = self.critic_target(bench_next_states, self.actor_target(bench_next_states))
+        target_q = bench_rewards + self.gamma * (1 - bench_dones) * target_q_next   # 如果done，则不考虑未来
         # 指导critic更新
-        q_value = self.critic_eval(batch_cur_states, batch_actions)
+        q_value = self.critic_eval(bench_cur_states, bench_actions)
         td_error = self.mse_loss(target_q, q_value)
         self.critic_optim.zero_grad()
         td_error.backward()
         self.critic_optim.step()
 
         # 指导actor更新
-        policy_loss = self.critic_eval(batch_cur_states, self.actor_eval(batch_cur_states))  # 用更新的eval网络评估这个动作
+        policy_loss = self.critic_eval(bench_cur_states, self.actor_eval(bench_cur_states))  # 用更新的eval网络评估这个动作
         # 如果 a是一个正确的行为的话，那么它的policy_loss应该更贴近0
         loss_a = -torch.mean(policy_loss)
         self.actor_optim.zero_grad()
         loss_a.backward()
         self.actor_optim.step()
-        return loss_a.detach().cpu().numpy()
+        return td_error.detach().cpu().numpy(), loss_a.detach().cpu().numpy()
 
     def add_step(self, s, a, r, d, s_):
         step = np.hstack((s.reshape(-1), a, [r], [d], s_.reshape(-1)))
