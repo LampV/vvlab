@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2019-12-06 23:01
-@edit time: 2019-12-07 21:39
+@edit time: 2020-01-08 16:19
 @file: /test.py
 """
 
@@ -24,6 +24,16 @@ class DDPG(DDPGBase):
         self.critic_eval = SimpleCriticNet(n_states, n_actions)
         self.critic_target = SimpleCriticNet(n_states, n_actions)
 
+    def _build_noise(self):
+        # self.noise = OUProcess(self.n_actions, sigma=0.1)
+        # 当不需要nosie函数的特殊情况，可以略过
+        pass 
+
+    def get_action_noise(self, state, rate=1):
+        action = self.choose_action(state)
+        action_noise = np.clip(np.random.normal(0, 3), -2, 2) * rate
+        action += action_noise
+        return action[0]
 
 
 def rl_loop():
@@ -40,7 +50,6 @@ def rl_loop():
     a_bound = env.action_space.high
 
     ddpg = DDPG(s_dim, a_dim, a_bound)
-    var = 3  # control exploration
     t1 = time.time()
     for i in range(MAX_EPISODES):
         s = env.reset()
@@ -48,10 +57,9 @@ def rl_loop():
         for j in range(MAX_EP_STEPS):
             if RENDER:
                 env.render()
-
+            var = 3
             # Add exploration noise
-            a = ddpg.choose_action(s)
-            a = np.clip(np.random.normal(a, var), -2, 2)    # add randomness to action selection for exploration
+            a = ddpg.get_action_noise(s)
             s_, r, done, info = env.step(a)
 
             ddpg.add_step(s, a, r / 10, done, s_)
