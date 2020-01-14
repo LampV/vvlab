@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2019-12-04 10:40
-@edit time: 2020-01-14 11:40
+@edit time: 2020-01-14 16:28
 @file: /exp_replay.py
 """
 
@@ -23,23 +23,18 @@ class ExpReplay:
         - n_states: state的维度
         - n_actions: action的维度
         - MAX_MEM: 经验回放池的容量上限。达到这个上限之后，后续的记录就会覆盖之前的记录。
-            默认值是: 2000
-            TODO 将默认值改为1000
+            默认值是: 1000
         - MIN_MEN: 经验回放池输出的最小数目。记录数目超过阈值之后，获取batch才会获得输出
             默认值是: MAX_MEM//10
         - BATCH_SIZE: 一个batch的大小。
-            默认值是: MAX_MEM//20
-            TODO 将默认值改为32
+            默认值是: 32
     3. 经验回放池的功能
         - 创建经验回放池对象
             >>> self.memory = ExpReplay(n_states,  n_actions, MAX_MEM=MAX_MEM, MIN_MEM=MIN_MEM)
         - 添加一条记录
-            >>> step = np.hstack((s.reshape(-1), a, [r], [d], s_.reshape(-1)))
-            >>> self.memory.add_step(step)
-            TODO 将hstack放在ExpReplay.add_step内部进行，对外提供add_step(s, a, r, d, s_)接口
-            每条记录都会被添加到经验回放池
-            如果添加之后超过了回放池的上限，则会随机删除 10%
-            TODO 将这个规则改为通用的顺序覆盖规则？
+            >>> self.memory.add_step(s, a, r, d, s_)
+            将这条记录放到经验回放池的顺序位置上，例如：
+                第一条记录在位置0，第2条记录在位置1，第MAX_MEM+1条记录在位置0
         - 获取一个batch用于训练
             >>> s, a, r, d, s_ = memery.get_batch_splited()
         - 获取一个已经被转为pytorch Variable的batch用于训练
@@ -47,17 +42,13 @@ class ExpReplay:
             >>> batch = self.memory.get_batch_splited_tensor(CUDA, batch_size)
     """
 
-    def __init__(self, n_states, n_actions, MAX_MEM=2000, MIN_MEM=None, BATCH_SIZE=None):
+    def __init__(self, n_states, n_actions, MAX_MEM=1000, MIN_MEM=None, BATCH_SIZE=32):
         """初始化经验回放池"""
-        # 保证参数被定义
+        # 参数复制与定义
         self.n_states, self.n_actions = n_states, n_actions
-        self.dim = n_states * 2 + n_actions + 2
         if not MIN_MEM:
             MIN_MEM = MAX_MEM // 10
-        if not BATCH_SIZE:
-            BATCH_SIZE = MIN_MEM // 2
-        self.max_mem = MAX_MEM
-        self.min_mem = MIN_MEM
+        self.max_mem , self.min_mem= MAX_MEM, MIN_MEM
         self.batch_size = BATCH_SIZE
         # 定义经验回放池
         self.expreplay_pool = np.array([[]])
@@ -66,7 +57,10 @@ class ExpReplay:
     def add_step(self, step):
         """
         为经验回放池增加一步，我们约定“一步”包括s, a, r, d, s_五个部分
-        @param step: 一条需要被添加到经验回放池的记录
+        将这一步的信息整合为一条记录，放置到mem_index指定的位置。之后，mem_index以MAX_MEM为模+1
+        即后来的记录会覆盖掉最早的记录
+
+        @param *step: 接收一条需要被添加到经验回放池的记录，要求按照s, a, r, d, s_的顺序给出
         """
         self.expreplay_pool = np.append(self.expreplay_pool, step).reshape(-1, self.dim)
         if self.expreplay_pool.shape[0] > self.max_mem:
