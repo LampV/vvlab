@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2019-11-17 11:23
-@edit time: 2019-12-16 17:10
+@edit time: 2020-01-14 16:32
 @file: /dqn.py
 @desc: 创建DQN对象
 """
@@ -91,6 +91,7 @@ class DQNBase(object):
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+        return loss.detach().cpu().numpy()
 
     def cuda(self):
         self.eval_net.cuda()
