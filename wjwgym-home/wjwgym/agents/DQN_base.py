@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2019-11-17 11:23
-@edit time: 2020-01-14 16:32
+@edit time: 2020-01-14 17:25
 @file: /dqn.py
 @desc: 创建DQN对象
 """
@@ -12,7 +12,7 @@ import torch.nn as nn
 import numpy as np
 import pandas as pd
 import gym
-from wjwgym.agents.Utils import ExpReplay
+from .Utils import ExpReplay
 CUDA = torch.cuda.is_available()
 
 
@@ -34,7 +34,7 @@ class DQNBase(object):
         self.n_states, self.n_actions = n_states, n_actions
         self._build_net()
 
-        self.replay_buff = ExpReplay(n_states, 1, MAX_MEM=200)
+        self.replay_buff = ExpReplay(n_states, 1, exp_size=200)
         # 定义优化器和损失函数
         self.optimizer = torch.optim.Adam(self.eval_net.parameters(), lr=learning_rate)
         self.loss_func = nn.MSELoss()
