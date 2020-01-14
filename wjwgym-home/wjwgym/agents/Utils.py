@@ -1,9 +1,9 @@
-#!/usr/bin/env python
+·#!/usr/bin/env python
 # coding=utf-8
 """
 @author: Jiawei Wu
 @create time: 2019-12-04 10:40
-@edit time: 2019-12-16 17:10
+@edit time: 2020-01-14 10:41
 @file: /exp_replay.py
 """
 
@@ -78,6 +78,21 @@ class ExpReplay:
         else:
             return (Variable(torch.from_numpy(ndarray)).type(dtype).cuda() for ndarray in batch) if CUDA else (Variable(torch.from_numpy(ndarray)).type(dtype) for ndarray in batch)
 
+class OUProcess(object):
+      """Ornstein-Uhlenbeck process"""
+  def __init__(self, x_size, mu=0, theta=0.15, sigma=0.3):
+    self.x = np.ones(x_size) * mu
+    self.x_size = x_size
+    self.mu = mu
+    self.theta = theta
+    self.sigma = sigma
+
+
+  def noise(self):
+    dx = self.theta * (self.mu - self.x) + self.sigma * np.random.randn(self.x_size)
+    self.x = self.x + dx
+    return self.x
+    
 def soft_update(target, source, tau):
     for target_param, param in zip(target.parameters(), source.parameters()):
         target_param.data.copy_(
