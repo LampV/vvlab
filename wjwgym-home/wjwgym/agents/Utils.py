@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2019-12-04 10:40
-@edit time: 2020-01-14 10:45
+@edit time: 2020-01-14 11:40
 @file: /exp_replay.py
 """
 
@@ -13,14 +13,42 @@ import numpy as np
 
 
 class ExpReplay:
+    """
+    使用类似Q-Learning算法的DRL通用的经验回放池
+    1. 经验回放池的一条记录
+        (state, action, reward, done, next_state) 或简写为 (s, a, r, d, s_)
+        其中done的意义在于，当状态为done的时候，Q估计=r，而不是Q估计=(r + gamma * Q'max)
+        显然，一条记录的维度是 dim(s) + dim(a) + dim(r) + dim(d) + dim(s_) = 2 * n_states + n_actions + 2
+    2. 经验回放池的参数
+        - n_states: state的维度
+        - n_actions: action的维度
+        - MAX_MEM: 经验回放池的容量上限。达到这个上限之后，后续的记录就会覆盖之前的记录。
+            默认值是: 2000
+            TODO 将默认值改为1000
+        - MIN_MEN: 经验回放池输出的最小数目。记录数目超过阈值之后，获取batch才会获得输出
+            默认值是: MAX_MEM//10
+        - BATCH_SIZE: 一个batch的大小。
+            默认值是: MAX_MEM//20
+            TODO 将默认值改为32
+    3. 经验回放池的功能
+        - 创建经验回放池对象
+            >>> self.memory = ExpReplay(n_states,  n_actions, MAX_MEM=MAX_MEM, MIN_MEM=MIN_MEM)
+        - 添加一条记录
+            >>> step = np.hstack((s.reshape(-1), a, [r], [d], s_.reshape(-1)))
+            >>> self.memory.add_step(step)
+            TODO 将hstack放在ExpReplay.add_step内部进行，对外提供add_step(s, a, r, d, s_)接口
+            每条记录都会被添加到经验回放池
+            如果添加之后超过了回放池的上限，则会随机删除 10%
+            TODO 将这个规则改为通用的顺序覆盖规则？
+        - 获取一个batch用于训练
+            >>> s, a, r, d, s_ = memery.get_batch_splited()
+        - 获取一个已经被转为pytorch Variable的batch用于训练
+            >>> CUDA = torch.cuda.is_available()
+            >>> batch = self.memory.get_batch_splited_tensor(CUDA, batch_size)
+    """
+
     def __init__(self, n_states, n_actions, MAX_MEM=2000, MIN_MEM=None, BATCH_SIZE=None):
-        """
-        定义经验回放池的参数
-        @param dim: Dimension of step (state, action, reward, done, next_state)
-        @param MAX_MEM: Maximum memory
-        @param MIN_MEM: Minimum memory，超过这个数目才返回batch
-        @param BATCH_SIZE: Batchmark size
-        """
+        """初始化经验回放池"""
         # 保证参数被定义
         self.n_states, self.n_actions = n_states, n_actions
         self.dim = n_states * 2 + n_actions + 2
@@ -36,7 +64,10 @@ class ExpReplay:
         self.mem_count = 0
 
     def add_step(self, step):
-        """为经验回放池增加一步，一步通常包括s, a, r, d, s_"""
+        """
+        为经验回放池增加一步，我们约定“一步”包括s, a, r, d, s_五个部分
+        @param step: 一条需要被添加到经验回放池的记录
+        """
         self.expreplay_pool = np.append(self.expreplay_pool, step).reshape(-1, self.dim)
         if self.expreplay_pool.shape[0] > self.max_mem:
             # 如果超了，随机删除10%
@@ -46,8 +77,10 @@ class ExpReplay:
     def get_batch(self, BATCH_SIZE=None):
         """
         从回放池中获取一个batch
-        如果batch_size未指定则按创建时的大小返回；
-        如果经验回放池大小未达到上限则返回None
+        如果经验回放池大小未达到输出阈值则返回None
+        
+        @param BATCH_SIZE: 一个batch的大小，若不指定则按经验回放池的默认值
+        @return 一个batch size 的记录
         """
         batch_size = BATCH_SIZE if BATCH_SIZE else self.batch_size
         if self.expreplay_pool.shape[0] > self.min_mem:
@@ -58,7 +91,13 @@ class ExpReplay:
             return None
 
     def get_batch_splited(self, BATCH_SIZE=None):
-        """将batch按照s, a, r, d, s_的顺序分割好并返回"""
+        """
+        将batch按照s, a, r, d, s_的顺序分割好并返回
+        
+        @param BATCH_SIZE: 一个batch的大小，若不指定则按经验回放池的默认值
+        @return cur_states, actions, rewards, dones, nexe_states: 
+            按照 (s, a, r, d, s_) 顺序分割好的一组batch 
+        """
         batch = self.get_batch(BATCH_SIZE)
         if batch is None:
             return batch
@@ -71,7 +110,15 @@ class ExpReplay:
             return cur_states, actions, rewards, dones, nexe_states
 
     def get_batch_splited_tensor(self, CUDA, BATCH_SIZE=None, dtype=torch.FloatTensor):
-        """将batch分割并转换为tensor之后返回"""
+        """
+        将batch分割并转换为tensor之后返回
+        
+        @param CUDA: 是否使用GPU，这决定了返回变量的设备类型
+        @param BATCH_SIZE: 一个batch的大小，若不指定则按经验回放池的默认值
+        @param dtype: 返回变量的数据类型，默认为Float
+        @return cur_states, actions, rewards, dones, nexe_states: 
+            按照 (s, a, r, d, s_) 顺序分割好且已经转为torch Variable的一组batch 
+        """
         batch = self.get_batch_splited(BATCH_SIZE)
         if batch is None:
             return batch
