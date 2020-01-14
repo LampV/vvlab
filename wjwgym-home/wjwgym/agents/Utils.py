@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2019-12-04 10:40
-@edit time: 2020-01-14 16:37
+@edit time: 2020-01-14 17:10
 @file: /exp_replay.py
 """
 
@@ -125,7 +125,7 @@ class ExpReplay:
         if batch is None:
             return batch
         else:
-            return (Variable(torch.from_numpy(ndarray)).type(dtype).cuda() for ndarray in batch) if CUDA else (Variable(torch.from_numpy(ndarray)).type(dtype) for ndarray in batch)
+            return (torch.from_numpy(ndarray).type(dtype).cuda() for ndarray in batch) if CUDA else (torch.from_numpy(ndarray).type(dtype) for ndarray in batch)
 
 
 class OUProcess(object):
