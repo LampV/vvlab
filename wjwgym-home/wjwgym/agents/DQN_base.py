@@ -65,9 +65,7 @@ class DQNBase(object):
         return action_values
 
     def add_step(self, cur_state, action, reward, done, next_state):
-        # 变量拼接
-        step = np.hstack([cur_state, action, reward, done, next_state])
-        self.replay_buff.add_step(step)
+        self.replay_buff.add_step(cur_state, action, reward, done, next_state)
 
     def learn(self):
         batch = self.replay_buff.get_batch_splited_tensor(CUDA)
