@@ -3,12 +3,11 @@
 """
 @author: Jiawei Wu
 @create time: 2019-12-04 10:36
-@edit time: 2020-01-14 16:34
+@edit time: 2020-01-14 17:24
 @file: ./DDPG_torch.py
 """
 import numpy as np
-from wjwgym.agents.ou import OUProcess
-from wjwgym.agents.Utils import ExpReplay, soft_update
+from .Utils import ExpReplay, soft_update, OUProcess
 import torch.nn as nn
 import torch
 from torch.utils.tensorboard import SummaryWriter
@@ -26,7 +25,7 @@ class DDPGBase(object):
         self.start_train = False
         self.mem_size = 0
         # 创建经验回放池
-        self.memory = ExpReplay(n_states,  n_actions, MAX_MEM=MAX_MEM, MIN_MEM=MIN_MEM)  # s, a, r, d, s_
+        self.memory = ExpReplay(n_states,  n_actions, exp_size=MAX_MEM, exp_thres=MIN_MEM)  # s, a, r, d, s_
         # 创建神经网络并指定优化器
         self._build_net()
         # 指定噪声发生器
@@ -94,7 +93,7 @@ class DDPGBase(object):
         self.critic_optim.zero_grad()
         td_error.backward()
         self.critic_optim.step()
-修改
+
         # 指导actor更新
         policy_loss = self.critic_eval(batch_cur_states, self.actor_eval(batch_cur_states))  # 用更新的eval网络评估这个动作
         # 如果 a是一个正确的行为的话，那么它的policy_loss应该更贴近0
