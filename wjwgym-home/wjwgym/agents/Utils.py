@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2019-12-04 10:40
-@edit time: 2020-01-14 16:28
+@edit time: 2020-01-14 16:30
 @file: /exp_replay.py
 """
 
@@ -48,13 +48,15 @@ class ExpReplay:
         self.n_states, self.n_actions = n_states, n_actions
         if not MIN_MEM:
             MIN_MEM = MAX_MEM // 10
-        self.max_mem , self.min_mem= MAX_MEM, MIN_MEM
+        self.max_mem, self.min_mem = MAX_MEM, MIN_MEM
         self.batch_size = BATCH_SIZE
-        # 定义经验回放池
-        self.expreplay_pool = np.array([[]])
-        self.mem_count = 0
+        # 初始化经验回放池
+        exp_dim, exp_size = n_states * 2 + n_actions + 2, MAX_MEM
+        self.expreplay_pool = np.zeros((exp_size, exp_dim))
+        # 初始化记录位置
+        self.mem_index = 0
 
-    def add_step(self, step):
+    def add_step(self, *step):
         """
         为经验回放池增加一步，我们约定“一步”包括s, a, r, d, s_五个部分
         将这一步的信息整合为一条记录，放置到mem_index指定的位置。之后，mem_index以MAX_MEM为模+1
@@ -62,24 +64,30 @@ class ExpReplay:
 
         @param *step: 接收一条需要被添加到经验回放池的记录，要求按照s, a, r, d, s_的顺序给出
         """
-        self.expreplay_pool = np.append(self.expreplay_pool, step).reshape(-1, self.dim)
-        if self.expreplay_pool.shape[0] > self.max_mem:
-            # 如果超了，随机删除10%
-            del_indexs = np.random.choice(self.max_mem, self.max_mem // 10)
-            np.delete(self.expreplay_pool, del_indexs, axis=0)
+        # 构建 step
+        s, a, r, d, s_ = step
+        step = np.hstack((s.reshape(-1), a, [r], [d], s_.reshape(-1)))
+        # step 添加到经验回放池
+        index = self.mem_index % self.max_mem
+        self.expreplay_pool[index] = step
+        # 更改mem_index位置，并确保不会int溢出
+        self.mem_index += 1
+        if self.mem_index > 2 * self.max_mem:
+            self.mem_index -= self.max_mem
 
     def get_batch(self, BATCH_SIZE=None):
         """
         从回放池中获取一个batch
         如果经验回放池大小未达到输出阈值则返回None
-        
+
         @param BATCH_SIZE: 一个batch的大小，若不指定则按经验回放池的默认值
         @return 一个batch size 的记录
         """
         batch_size = BATCH_SIZE if BATCH_SIZE else self.batch_size
-        if self.expreplay_pool.shape[0] > self.min_mem:
-            # 比最小输出阈值大的时候才返回batch
-            choice_indexs = np.random.choice(self.expreplay_pool.shape[0], batch_size)
+        # 超过输出阈值的时候才返回batch
+        if self.mem_index >= self.min_mem:
+            expreplay_pool_size = min(self.mem_index, self.max_mem)
+            choice_indexs = np.random.choice(expreplay_pool_size, batch_size)
             return self.expreplay_pool[choice_indexs]
         else:
             return None
@@ -87,7 +95,7 @@ class ExpReplay:
     def get_batch_splited(self, BATCH_SIZE=None):
         """
         将batch按照s, a, r, d, s_的顺序分割好并返回
-        
+
         @param BATCH_SIZE: 一个batch的大小，若不指定则按经验回放池的默认值
         @return cur_states, actions, rewards, dones, nexe_states: 
             按照 (s, a, r, d, s_) 顺序分割好的一组batch 
@@ -106,7 +114,7 @@ class ExpReplay:
     def get_batch_splited_tensor(self, CUDA, BATCH_SIZE=None, dtype=torch.FloatTensor):
         """
         将batch分割并转换为tensor之后返回
-        
+
         @param CUDA: 是否使用GPU，这决定了返回变量的设备类型
         @param BATCH_SIZE: 一个batch的大小，若不指定则按经验回放池的默认值
         @param dtype: 返回变量的数据类型，默认为Float
