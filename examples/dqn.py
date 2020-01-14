@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2019-12-07 20:17
-@edit time: 2019-12-07 20:32
+@edit time: 2019-12-27 16:31
 @file: /examples/dqn.py
 """
 import torch
@@ -14,6 +14,8 @@ import gym
 from wjwgym.agents import DQNBase
 from wjwgym.models import SimpleDQNNet
 CUDA = torch.cuda.is_available()
+from torch.utils.tensorboard import SummaryWriter
+
 
 class DQN(DQNBase):
     def _build_net(self):
@@ -22,7 +24,8 @@ class DQN(DQNBase):
 
 
 def rl_loop():
-    MAX_EPISODES = 200
+    summary_writer = SummaryWriter()
+    MAX_EPISODES = 100
     env = gym.make('Maze-v0')
     n_states = reduce(np.multiply, env.observation_space.shape)
     n_actions = env.action_space.n
@@ -37,24 +40,13 @@ def rl_loop():
             next_state, reward, done, info = env.step(action)
             next_state = next_state.reshape((n_states))
             agent.add_step(cur_state, action, reward, done, next_state)
-            agent.learn()
+            loss = agent.learn()
+            if loss:
+                summary_writer.add_scalar('loss', loss, agent.eval_step)
             cur_state = next_state
         print('ep: ', ep, ' steps: ', info, ' final reward: ', reward)
+        summary_writer.add_scalar('reward', reward, ep)
     print('done')
-    cur_state = env.reset()
-    cur_state = cur_state.reshape((n_states))
-    done = False
-
-    # test
-    while not done:
-        action = agent.get_action(cur_state)
-        action_values = agent.get_raw_out(cur_state)
-        print(action_values)
-        next_state, reward, done, info = env.step(action)
-        next_state = next_state.reshape((n_states))
-        agent.add_step(cur_state, action, reward, done, next_state)
-        agent.learn()
-        cur_state = next_state
 
 
 if __name__ == '__main__':
