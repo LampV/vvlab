@@ -3,10 +3,11 @@
 """
 @author: Jiawei Wu
 @create time: 2019-12-06 23:16
-@edit time: 2019-12-07 20:28
+@edit time: 2020-01-15 16:13
 @file: /wjwgym-home/wjwgym/agents/__init__.py
 """
 
 
-from wjwgym.agents.DDPG_base import DDPGBase
-from wjwgym.agents.DQN_base import DQNBase
+from .DDPG_base import DDPGBase
+from .DQN_base import DQNBase
+from .Linear_base import LinearBase
