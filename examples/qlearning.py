@@ -3,16 +3,31 @@
 """
 @create time: 2019-11-21 11:17
 @author: Jiawei Wu
-@edit time: 2019-11-26 16:44
+@edit time: 2020-01-15 16:06
 @file: /test.py
 """
 
 import time
-from linear_agent import QLearning, Sarsa
-import gym 
+import gym
 import wjwgym
+from wjwgym.agents import LinearBase
 
-def update(env, agent):
+
+class QLearning(LinearBase):
+    def __init__(self, actions, learning_rate=0.01, reward_decay=0.9, e_greedy=0.9):
+        super(QLearning, self).__init__(actions, e_greedy, learning_rate, reward_decay)
+
+    def learn(self, s, a, r, d, s_):
+        self.check_state_exist(s_)
+        q_predict = self.q_table.loc[s, a]
+        if not d:
+            q_target = r + self.gamma * self.q_table.loc[s_, :].max()  # next state is not terminal
+        else:
+            q_target = r  # next state is terminal
+        self.q_table.loc[s, a] += self.lr * (q_target - q_predict)  # update
+
+
+def rl_loop(env, agent):
     """
     @description: 
     @param env: 传入的环境对象
@@ -32,13 +47,9 @@ def update(env, agent):
 
             next_state, reward, done, step_count = env.step(action)
 
-            # Sarsa
-            next_action = agent.choose_action(str(next_state))
-            # agent.learn(str(state), action, reward, done, str(next_state), next_action)
-
             # QLearning
             agent.learn(str(state), action, reward, done, str(next_state))
-            
+
             # swap observation
             state = next_state
 
@@ -53,8 +64,8 @@ def update(env, agent):
     # end of game
     print('game over')
 
+
 if __name__ == "__main__":
-    enviornment = gym.make('Maze-v0')
-    # RL = Sarsa(actions=list(range(enviornment.action_space.n)))
-    RL = QLearning(actions=list(range(enviornment.action_space.n)))
-    update(enviornment, RL)
+    env = gym.make('Maze-v0')
+    RL = QLearning(actions=list(range(env.action_space.n)))
+    rl_loop(env, RL)
