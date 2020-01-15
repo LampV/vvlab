@@ -3,11 +3,10 @@
 """
 @author: Jiawei Wu
 @create time: 2019-11-25 10:49
-@edit time: 2019-12-06 23:19
+@edit time: 2020-01-15 16:14
 @file: /wjwgym/wjwgym/__init__.py
 """
 
-from wjwgym.agents import DDPGBase
 from gym.envs.registration import register
 
 register(
