@@ -3,7 +3,7 @@
 """
 @create time: 2019-11-22 10:19
 @author: Jiawei Wu
-@edit time: 2019-11-26 16:28
+@edit time: 2020-01-15 16:05
 @file: /linear_agent.py
 """
 
@@ -11,8 +11,9 @@ import numpy as np
 import pandas as pd
 
 
-class LinearAgent:
+class LinearBase:
     """线性学习（QLearning、Sarsa及变形）的基类"""
+
     def __init__(self, actions: list, e_greedy: float, learning_rate, reward_decay):
         """
         初始化基类
@@ -38,7 +39,7 @@ class LinearAgent:
             epsilon = self.epsilon
         # 检测当前状态是否存在（若不存在会被初始化）
         self.check_state_exist(observation)
-        
+
         # 选取动作
         if np.random.uniform() < epsilon:
             # 获取当前state对应的QTable行
@@ -55,7 +56,7 @@ class LinearAgent:
         检测状态是否存在，如果不存在则添加到QTable的行，并初始化为全0
             :param self: 
             :param state: 
-        """   
+        """
         if state not in self.q_table.index:
             # append new state to q table
             self.q_table = self.q_table.append(
@@ -70,35 +71,3 @@ class LinearAgent:
         """打印QTable内容"""
         q_table = self.q_table
         print(q_table)
-
-
-class QLearning(LinearAgent):
-    def __init__(self, actions, learning_rate=0.01, reward_decay=0.9, e_greedy=0.9):
-        super(QLearning, self).__init__(actions, e_greedy, learning_rate, reward_decay)
-
-    def learn(self, s, a, r, d, s_):
-        self.check_state_exist(s_)
-        q_predict = self.q_table.loc[s, a]
-        if not d:
-            q_target = r + self.gamma * self.q_table.loc[s_, :].max()  # next state is not terminal
-        else:
-            q_target = r  # next state is terminal
-        self.q_table.loc[s, a] += self.lr * (q_target - q_predict)  # update
-
-
-class Sarsa(LinearAgent):
-    def __init__(self, actions, learning_rate=0.01, reward_decay=0.9, e_greedy=0.9):
-        super(Sarsa, self).__init__(actions, e_greedy, reward_decay, e_greedy)
-        self.lr = learning_rate
-        self.gamma = reward_decay
-
-    def learn(self, s, a, r, d, s_, a_):
-        self.check_state_exist(s_)
-        q_predict = self.q_table.loc[s, a]
-        if not d:
-            q_target = r + self.gamma * self.q_table.loc[s_, a_]  # next state is not terminal
-        else:
-            q_target = r  # next state is terminal
-        self.q_table.loc[s, a] += self.lr * (q_target - q_predict)  # update
-
-    
