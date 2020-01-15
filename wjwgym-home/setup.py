@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2019-11-25 11:08
-@edit time: 2019-12-10 10:44
+@edit time: 2020-01-15 16:20
 @file: /wjwgym-home/setup.py
 """
 
@@ -19,16 +19,16 @@ def readme():
 
 setup(
     name='wjwgym',
-    version='0.1.0',
+    version='0.2.0',
     packages=find_packages(),
     scripts=[],
     url='',
     license='MIT',
     author='Jiawei Wu',
     author_email='13260322877@163.com',
-    description='OpenAI Gym test models',
-    long_description='OpenAI Gym test models',
-    keywords='openAI gym',
+    description='Reinforcement Learning Tools',
+    long_description='Agent(Q-Learning, DQN, DDPG..) base classes; Simple pytorch models; simple openai gym envs; and examples.',
+    keywords=['Reinforcement Learning', 'OpenAI gym', 'Tools']
     install_requires=['numpy', 'gym', 'torch', 'pandas'],
     extras_require={},
 )
