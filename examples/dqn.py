@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2019-12-07 20:17
-@edit time: 2019-12-27 16:31
+@edit time: 2020-01-15 17:00
 @file: /examples/dqn.py
 """
 import torch
@@ -18,6 +18,9 @@ from torch.utils.tensorboard import SummaryWriter
 
 
 class DQN(DQNBase):
+    """
+    基于DQNBase创建的DQN类，通过附带的简单神经网络创建了 eval dqn network 和 target dqn network
+    """
     def _build_net(self):
         self.eval_net = SimpleDQNNet(self.n_states, self.n_actions)
         self.target_net = SimpleDQNNet(self.n_states, self.n_actions)

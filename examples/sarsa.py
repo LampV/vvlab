@@ -3,7 +3,7 @@
 """
 @create time: 2019-11-21 11:17
 @author: Jiawei Wu
-@edit time: 2020-01-15 16:07
+@edit time: 2020-01-15 17:02
 @file: /test.py
 """
 
@@ -14,12 +14,16 @@ from wjwgym.agents import LinearBase
 
 
 class Sarsa(LinearBase):
+    """基于线性QTable创建的QLearning类"""
     def __init__(self, actions, learning_rate=0.01, reward_decay=0.9, e_greedy=0.9):
         super(Sarsa, self).__init__(actions, e_greedy, reward_decay, e_greedy)
         self.lr = learning_rate
         self.gamma = reward_decay
 
     def learn(self, s, a, r, d, s_, a_):
+        """
+        Q-Learning计算Q估计的时候使用Q'，所以还需要知道下一动作
+        """
         self.check_state_exist(s_)
         q_predict = self.q_table.loc[s, a]
         if not d:

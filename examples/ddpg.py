@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2019-12-06 23:01
-@edit time: 2020-01-08 16:19
+@edit time: 2020-01-15 17:00
 @file: /test.py
 """
 
@@ -17,6 +17,7 @@ CUDA = torch.cuda.is_available()
 
 
 class DDPG(DDPGBase):
+    """DDPG类创建示例"""
     def _build_net(self):
         n_states, n_actions = self.n_states, self.n_actions
         self.actor_eval = SimpleActorNet(n_states, n_actions, a_bound=self.bound)
