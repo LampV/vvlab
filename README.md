@@ -28,7 +28,7 @@
    安装wjwgym到本地
 
    ```bash
-   pip install wjwgym-home
+   pip install ./wjwgym-home
     ```
 
 2. 运行示例  
