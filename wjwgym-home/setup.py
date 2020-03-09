@@ -24,11 +24,11 @@ URL = 'https://github.com/LampV/Reinforcement-Learning'
 EMAIL = '13260322877@163.com'
 AUTHOR = 'Jiawei Wu',
 REQUIRES_PYTHON = '>=3.6.0'
-VERSION = '0.1.2'
+VERSION = '0.1.3'
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    'numpy', 'gym', 'torch', 'pandas'
+    'numpy', 'gym', 'torch', 'pandas', 'tensorboard>=1.14.0'
 ]
 
 # What packages are optional?
