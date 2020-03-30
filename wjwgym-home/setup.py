@@ -18,13 +18,13 @@ from shutil import rmtree
 from setuptools import find_packages, setup, Command
 
 # Package meta-data.
-NAME = 'wjwgym'
+NAME = 'vvlab'
 DESCRIPTION = 'Reinforcement Learning Tools'
 URL = 'https://github.com/LampV/Reinforcement-Learning'
 EMAIL = '13260322877@163.com'
 AUTHOR = 'Jiawei Wu',
 REQUIRES_PYTHON = '>=3.6.0'
-VERSION = '0.1.3'
+VERSION = '0.1.4'
 
 # What packages are required for this module to be executed?
 REQUIRED = [
