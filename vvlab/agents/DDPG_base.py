@@ -26,6 +26,8 @@ class DDPGBase(object):
         self.summary = summary
         self.kwargs = kwargs
         
+        # 初始化episode和step
+        self.episode, self.step = 0, 0
         # 参数覆盖
         self._param_override()
         
@@ -104,13 +106,14 @@ class DDPGBase(object):
         states.update(append_dict)
         torch.save(states, save_path)
 
-    def save(self, episode, save_path='./cur_model.pth'):
+    def save(self, episode=None, save_path='./cur_model.pth'):
         """保存的默认实现
         @param episode: 当前的episode
         @param save_path: 模型的保存位置，默认是'./cur_model.pth'
         """
         append_dict = {
-            'episode': episode,
+            'episode': self.episode if episode is None else episode,
+            'step': self.step
         }
         self._save(save_path, append_dict)
 
@@ -130,6 +133,8 @@ class DDPGBase(object):
         self.critic_eval.load_state_dict(states['critic_eval_net'])
         self.critic_target.load_state_dict(states['critic_target_net'])
 
+        # 从模型中加载episode和step信息
+        self.episode, self.step = states['episode'], states['step']
         # 返回states
         return states
 
@@ -180,7 +185,14 @@ class DDPGBase(object):
         return td_error.detach().cpu().numpy(), loss_a.detach().cpu().numpy()
 
     def _add_step(self, s, a, r, d, s_):
+        """向经验回放池添加一条记录"""
         self.memory.add_step(s, a, r, d, s_)
+        
+    def add_step(self, s, a, r, d, s_):
+        """添加记录的默认实现
+        除了添加记录之外不做任何操作
+        """
+        self._add_step(s, a, r, d, s_)
 
     def cuda(self):
         self.actor_eval.cuda()
