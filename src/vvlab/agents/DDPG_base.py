@@ -22,6 +22,8 @@ class DDPGBase(object):
         self.n_states, self.n_actions = n_states, n_actions
         self.tau, self.gamma, self.bound = tau, gamma, a_bound
         self.batch_size = BATCH_SIZE
+        self.summary = summary
+        self.kwargs = kwargs
         # 初始化训练指示符
         self.start_train = False
         self.mem_size = 0
@@ -32,13 +34,7 @@ class DDPGBase(object):
         # 指定噪声发生器
         self._build_noise()
         # 指定summary writer
-        if summary:
-            if 'summary_path' in kwargs:
-                self._build_summary_writer(kwargs['summary_path'])
-            else:
-                self._build_summary_writer()
-        else:
-            self.summary_writer = None
+        self._build_summary_writer()
         self.actor_optim = torch.optim.Adam(self.actor_eval.parameters(), lr=lr_a)
         self.critic_optim = torch.optim.Adam(self.critic_eval.parameters(), lr=lr_c)
         # 约定损失函数
@@ -53,11 +49,19 @@ class DDPGBase(object):
     def _build_noise(self, *args):
         raise TypeError("噪声发生器构建函数未被实现")
 
-    def _build_summary_writer(self, summary_path=None):
-        if summary_path:
-            self.summary_writer = SummaryWriter(log_dir=summary_path)
+    def _build_summary_writer(self):
+        """构建summary_writer
+        如果指定了不需要summary_writer，会将其置为None
+        如果指定了保存路径就使用保存路径，否则使用默认路径
+        """
+        if self.summary:
+            if 'summary_path' in kwargs:
+                self.summary_writer = SummaryWriter(log_dir=kwargs['summary_path'])
+                self._build_summary_writer(kwargs['summary_path'])
+            else:
+                self.summary_writer = SummaryWriter()
         else:
-            self.summary_writer = SummaryWriter()
+            self.summary_writer = None
             
     def get_summary_writer(self):
         return self.summary_writer
