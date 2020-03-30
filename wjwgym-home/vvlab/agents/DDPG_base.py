@@ -7,10 +7,11 @@
 @file: ./DDPG_torch.py
 """
 import numpy as np
-from .Utils import ExpReplay, soft_update, OUProcess
+import os
 import torch.nn as nn
 import torch
 from torch.utils.tensorboard import SummaryWriter
+from .Utils import ExpReplay, soft_update, OUProcess
 CUDA = torch.cuda.is_available()
 
 
@@ -90,6 +91,39 @@ class DDPGBase(object):
             'episode': episode,
         }
         self._save(save_path, append_dict)
+        
+    def _load(self, save_path):
+        """加载模型参数
+        @param save_path: 模型的保存位置
+        @return: 加载得到的模型字典
+        """
+        if CUDA:
+            states = torch.load(save_path, map_location=torch.device('cuda'))
+        else:
+            states = torch.load(save_path, map_location=torch.device('cpu'))
+        
+        # 从模型中加载网络参数
+        self.actor_eval.load_state_dict(states['actor_eval_net'])
+        self.actor_target.load_state_dict(states['actor_target_net'])
+        self.critic_eval.load_state_dict(states['critic_eval_net'])
+        self.critic_target.load_state_dict(states['critic_target_net'])
+        
+        # 返回states
+        return states
+    
+    def load(self, save_path='./cur_model.pth'):
+        """加载模型的默认实现
+        @param save_path: 模型的保存位置, 默认是 './cur_model.pth'
+        @return: 被记录的episode值
+        """
+        print('\033[1;31;40m{}\033[0m'.format('加载模型参数...'))
+        if not os.path.exists(save_path):
+            print('\033[1;31;40m{}\033[0m'.format('没找到保存文件'))
+            return -1
+        else:
+            states = self._load(save_path)
+            return states['episode']
+        
 
     def get_action(self, s):
         return self._get_action(s)
