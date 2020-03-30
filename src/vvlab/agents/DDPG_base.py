@@ -16,29 +16,37 @@ CUDA = torch.cuda.is_available()
 
 
 class DDPGBase(object):
-    def __init__(self, n_states, n_actions, a_bound=1, lr_a=0.001, lr_c=0.002, tau=0.01, gamma=0.9, 
-        MAX_MEM=10000, MIN_MEM=None, BATCH_SIZE=32, summary=False, **kwargs):
+    def __init__(self, n_states, n_actions, bound=1, exp_size=10000, exp_thres=None, batch_size=32,
+                 lr_a=0.001, lr_c=0.002, tau=0.01, gamma=0.9,
+                 summary=False, **kwargs):
         # 参数复制
-        self.n_states, self.n_actions = n_states, n_actions
-        self.tau, self.gamma, self.bound = tau, gamma, a_bound
-        self.batch_size = BATCH_SIZE
+        self.n_states, self.n_actions, self.bound = n_states, n_actions, bound
+        self.replay_size, self.replay_thres, self.batch_size = exp_size, exp_thres, batch_size
+        self.lr_a, self.lr_c, self.tau, self.gamma = lr_a, lr_c, tau, gamma
         self.summary = summary
         self.kwargs = kwargs
+
         # 初始化训练指示符
         self.start_train = False
         self.mem_size = 0
+        
         # 创建经验回放池
-        self.memory = ExpReplay(n_states,  n_actions, exp_size=MAX_MEM, exp_thres=MIN_MEM)  # s, a, r, d, s_
-        # 创建神经网络并指定优化器
+        self.memory = ExpReplay(n_states,  n_actions, exp_size=exp_size, exp_thres=exp_thres)
+        
+        # 创建神经网络
         self._build_net()
-        # 指定噪声发生器
-        self._build_noise()
-        # 指定summary writer
-        self._build_summary_writer()
-        self.actor_optim = torch.optim.Adam(self.actor_eval.parameters(), lr=lr_a)
-        self.critic_optim = torch.optim.Adam(self.critic_eval.parameters(), lr=lr_c)
+        # 指定优化器
+        self.actor_optim = torch.optim.Adam(self.actor_eval.parameters(), lr=self.lr_a)
+        self.critic_optim = torch.optim.Adam(self.critic_eval.parameters(), lr=self.lr_c)
         # 约定损失函数
         self.mse_loss = nn.MSELoss()
+        
+        # 指定噪声发生器
+        self._build_noise()
+        
+        # 指定summary writer
+        self._build_summary_writer()
+        
         # 开启cuda
         if CUDA:
             self.cuda()
@@ -62,7 +70,7 @@ class DDPGBase(object):
                 self.summary_writer = SummaryWriter()
         else:
             self.summary_writer = None
-            
+
     def get_summary_writer(self):
         return self.summary_writer
 
@@ -71,10 +79,10 @@ class DDPGBase(object):
         s = torch.unsqueeze(torch.FloatTensor(s), 0)
         action = self.actor_eval.forward(s).detach().cpu().numpy()
         return action
-    
+
     def get_action(self, s):
         return self._get_action(s)
-    
+
     def _save(self, save_path, append_dict={}):
         """保存当前模型的网络参数
         @param save_path: 模型的保存位置
@@ -88,7 +96,7 @@ class DDPGBase(object):
         }
         states.update(append_dict)
         torch.save(states, save_path)
-        
+
     def save(self, episode, save_path='./cur_model.pth'):
         """保存的默认实现
         @param episode: 当前的episode
@@ -98,7 +106,7 @@ class DDPGBase(object):
             'episode': episode,
         }
         self._save(save_path, append_dict)
-        
+
     def _load(self, save_path):
         """加载模型参数
         @param save_path: 模型的保存位置
@@ -108,16 +116,16 @@ class DDPGBase(object):
             states = torch.load(save_path, map_location=torch.device('cuda'))
         else:
             states = torch.load(save_path, map_location=torch.device('cpu'))
-        
+
         # 从模型中加载网络参数
         self.actor_eval.load_state_dict(states['actor_eval_net'])
         self.actor_target.load_state_dict(states['actor_target_net'])
         self.critic_eval.load_state_dict(states['critic_eval_net'])
         self.critic_target.load_state_dict(states['critic_target_net'])
-        
+
         # 返回states
         return states
-    
+
     def load(self, save_path='./cur_model.pth'):
         """加载模型的默认实现
         @param save_path: 模型的保存位置, 默认是 './cur_model.pth'
