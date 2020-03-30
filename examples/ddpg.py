@@ -11,13 +11,17 @@ import torch
 import numpy as np
 import time
 import gym
-from wjwgym.agents import DDPGBase
-from wjwgym.models import SimpleActorNet, SimpleCriticNet
+from vvlab.agents import DDPGBase
+from vvlab.models import SimpleActorNet, SimpleCriticNet
 CUDA = torch.cuda.is_available()
 
 
 class DDPG(DDPGBase):
     """DDPG类创建示例"""
+    def _param_override(self):
+        self.summary = False
+        self.mem_size = 0
+        
     def _build_net(self):
         n_states, n_actions = self.n_states, self.n_actions
         self.actor_eval = SimpleActorNet(n_states, n_actions, a_bound=self.bound)
@@ -31,10 +35,14 @@ class DDPG(DDPGBase):
         pass 
 
     def get_action_noise(self, state, rate=1):
-        action = self.choose_action(state)
+        action = self.get_action(state)
         action_noise = np.clip(np.random.normal(0, 3), -2, 2) * rate
         action += action_noise
         return action[0]
+    
+    def add_step(self, s, a, r, d, s_):
+        self._add_step(s, a, r, d, s_)
+        self.mem_size += 1
 
 
 def rl_loop():

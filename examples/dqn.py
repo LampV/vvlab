@@ -8,11 +8,11 @@
 """
 import torch
 import numpy as np
-import wjwgym
+import vvlab
 from functools import reduce
 import gym
-from wjwgym.agents import DQNBase
-from wjwgym.models import SimpleDQNNet
+from vvlab.agents import DQNBase
+from vvlab.models import SimpleDQNNet
 CUDA = torch.cuda.is_available()
 from torch.utils.tensorboard import SummaryWriter
 

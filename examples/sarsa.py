@@ -9,8 +9,8 @@
 
 import time
 import gym
-import wjwgym
-from wjwgym.agents import LinearBase
+import vvlab
+from vvlab.agents import LinearBase
 
 
 class Sarsa(LinearBase):
