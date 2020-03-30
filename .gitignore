@@ -2,3 +2,6 @@ __pycache__/
 .vscode/
 runs/
 test.py
+src/build/
+src/dist/
+src/*.egg-info
