@@ -26,8 +26,11 @@ class DDPGBase(object):
         self.summary = summary
         self.kwargs = kwargs
         
+        # 参数覆盖
+        self._param_override()
+        
         # 创建经验回放池
-        self.memory = ExpReplay(n_states,  n_actions, exp_size=exp_size, exp_thres=exp_thres)
+        self.memory = ExpReplay(self.n_states, self.n_actions, exp_size=self.exp_size, exp_thres=self.exp_thres)
         
         # 创建神经网络
         self._build_net()
@@ -46,6 +49,14 @@ class DDPGBase(object):
         # 开启cuda
         if CUDA:
             self.cuda()
+            
+    def _param_override(self):
+        """覆盖参数
+        提供子类简单覆写基类参数的方法
+        例如：修改summary是否开启
+        应当谨慎使用这个方法
+        """
+        pass
 
     def _build_net(self):
         raise TypeError("网络构建函数未被实现")
