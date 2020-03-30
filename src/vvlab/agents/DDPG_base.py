@@ -17,7 +17,7 @@ CUDA = torch.cuda.is_available()
 
 class DDPGBase(object):
     def __init__(self, n_states, n_actions, a_bound=1, lr_a=0.001, lr_c=0.002, tau=0.01, gamma=0.9, 
-        MAX_MEM=10000, MIN_MEM=None, BATCH_SIZE=32, summary=True, **kwargs):
+        MAX_MEM=10000, MIN_MEM=None, BATCH_SIZE=32, summary=False, **kwargs):
         # 参数复制
         self.n_states, self.n_actions = n_states, n_actions
         self.tau, self.gamma, self.bound = tau, gamma, a_bound
