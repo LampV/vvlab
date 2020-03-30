@@ -38,7 +38,7 @@ class DDPGBase(object):
             else:
                 self._build_summary_writer()
         else:
-            self.summary_writer
+            self.summary_writer = None
         self.actor_optim = torch.optim.Adam(self.actor_eval.parameters(), lr=lr_a)
         self.critic_optim = torch.optim.Adam(self.critic_eval.parameters(), lr=lr_c)
         # 约定损失函数
