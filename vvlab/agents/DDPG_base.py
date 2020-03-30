@@ -187,6 +187,8 @@ class DDPGBase(object):
     
     def learn(self):
         c_loss, a_loss = self._learn()
+        if all((c_loss is not None, a_loss is not None)):
+            self.step += 1
         if self.summary_writer:
             self.summary_writer.add_scalar('c_loss', c_loss, self.step)
             self.summary_writer.add_scalar('a_loss', a_loss, self.step)
