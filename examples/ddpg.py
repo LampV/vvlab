@@ -19,7 +19,7 @@ CUDA = torch.cuda.is_available()
 class DDPG(DDPGBase):
     """DDPG类创建示例"""
     def _param_override(self):
-        self.summary = False
+        self.summary = True
         self.mem_size = 0
         
     def _build_net(self):
