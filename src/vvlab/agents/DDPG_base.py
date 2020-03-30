@@ -25,10 +25,6 @@ class DDPGBase(object):
         self.lr_a, self.lr_c, self.tau, self.gamma = lr_a, lr_c, tau, gamma
         self.summary = summary
         self.kwargs = kwargs
-
-        # 初始化训练指示符
-        self.start_train = False
-        self.mem_size = 0
         
         # 创建经验回放池
         self.memory = ExpReplay(n_states,  n_actions, exp_size=exp_size, exp_thres=exp_thres)
@@ -172,9 +168,8 @@ class DDPGBase(object):
         self.actor_optim.step()
         return td_error.detach().cpu().numpy(), loss_a.detach().cpu().numpy()
 
-    def add_step(self, s, a, r, d, s_):
+    def _add_step(self, s, a, r, d, s_):
         self.memory.add_step(s, a, r, d, s_)
-        self.mem_size += 1
 
     def cuda(self):
         self.actor_eval.cuda()
