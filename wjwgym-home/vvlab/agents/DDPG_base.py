@@ -16,7 +16,7 @@ CUDA = torch.cuda.is_available()
 
 class DDPGBase(object):
     def __init__(self, n_states, n_actions, a_bound=1, lr_a=0.001, lr_c=0.002, tau=0.01, gamma=0.9, 
-        MAX_MEM=10000, MIN_MEM=None, BATCH_SIZE=32, **kwargs):
+        MAX_MEM=10000, MIN_MEM=None, BATCH_SIZE=32, summary=True, **kwargs):
         # 参数复制
         self.n_states, self.n_actions = n_states, n_actions
         self.tau, self.gamma, self.bound = tau, gamma, a_bound
@@ -31,10 +31,13 @@ class DDPGBase(object):
         # 指定噪声发生器
         self._build_noise()
         # 指定summary writer
-        if 'summary_path' in kwargs:
-            self._build_summary_writer(kwargs['summary_path'])
+        if summary:
+            if 'summary_path' in kwargs:
+                self._build_summary_writer(kwargs['summary_path'])
+            else:
+                self._build_summary_writer()
         else:
-            self._build_summary_writer()
+            self.summary_writer
         self.actor_optim = torch.optim.Adam(self.actor_eval.parameters(), lr=lr_a)
         self.critic_optim = torch.optim.Adam(self.critic_eval.parameters(), lr=lr_c)
         # 约定损失函数
