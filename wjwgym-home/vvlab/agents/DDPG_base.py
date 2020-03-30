@@ -66,6 +66,30 @@ class DDPGBase(object):
         s = torch.unsqueeze(torch.FloatTensor(s), 0)
         action = self.actor_eval.forward(s).detach().cpu().numpy()
         return action
+    
+    def _save(self, save_path, append_dict={}):
+        """保存当前模型的网络参数
+        @param save_path: 模型的保存位置
+        @param append_dict: 除了网络模型之外需要保存的内容
+        """
+        states = {
+            'actor_eval_net': self.actor_eval.state_dict(),
+            'actor_target_net': self.actor_target.state_dict(),
+            'critic_eval_net': self.critic_eval.state_dict(),
+            'critic_target_net': self.critic_target.state_dict(),
+        }
+        states.update(append_dict)
+        torch.save(states, save_path)
+        
+    def save(self, episode, save_path='./cur_model.pth'):
+        """保存的默认实现
+        @param episode: 当前的episode
+        @param save_path: 模型的保存位置，默认是'./cur_model.pth'
+        """
+        append_dict = {
+            'episode': episode,
+        }
+        self._save(save_path, append_dict)
 
     def get_action(self, s):
         return self._get_action(s)
