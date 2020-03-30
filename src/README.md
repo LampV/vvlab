@@ -2,7 +2,6 @@
  * @author: Jiawei Wu
  * @create time: 2020-03-18 11:35
  * @edit time: 2020-03-30 10:11
- * @file: /RL4Net-lib/wjwgym-home/README.md
  -->
 # vvlab: 强化学习工具包
 
