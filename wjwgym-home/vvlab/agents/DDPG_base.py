@@ -68,6 +68,9 @@ class DDPGBase(object):
         action = self.actor_eval.forward(s).detach().cpu().numpy()
         return action
     
+    def get_action(self, s):
+        return self._get_action(s)
+    
     def _save(self, save_path, append_dict={}):
         """保存当前模型的网络参数
         @param save_path: 模型的保存位置
@@ -123,13 +126,6 @@ class DDPGBase(object):
         else:
             states = self._load(save_path)
             return states['episode']
-        
-
-    def get_action(self, s):
-        return self._get_action(s)
-
-    def choose_action(self, s):
-        return self._get_action(s)
 
     def learn(self):
         """训练网络"""
