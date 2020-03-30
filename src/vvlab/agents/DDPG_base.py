@@ -21,7 +21,7 @@ class DDPGBase(object):
                  summary=False, **kwargs):
         # 参数复制
         self.n_states, self.n_actions, self.bound = n_states, n_actions, bound
-        self.replay_size, self.replay_thres, self.batch_size = exp_size, exp_thres, batch_size
+        self.exp_size, self.exp_thres, self.batch_size = exp_size, exp_thres, batch_size
         self.lr_a, self.lr_c, self.tau, self.gamma = lr_a, lr_c, tau, gamma
         self.summary = summary
         self.kwargs = kwargs
