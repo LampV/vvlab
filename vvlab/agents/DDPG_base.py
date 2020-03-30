@@ -151,7 +151,7 @@ class DDPGBase(object):
             states = self._load(save_path)
             return states['episode']
 
-    def learn(self):
+    def _learn(self):
         """训练网络"""
         # 将eval网络参数赋给target网络
         soft_update(self.actor_target, self.actor_eval, self.tau)
@@ -164,6 +164,7 @@ class DDPGBase(object):
         else:
             self.start_train = True
         batch_cur_states, batch_actions, batch_rewards, batch_dones, batch_next_states = batch
+        
         # 计算target_q，指导cirtic更新
         # 通过a_target和next_state计算target网络会选择的下一动作 next_action；通过target_q和next_states、刚刚计算的next_actions计算下一状态的q_values
         target_q_next = self.critic_target(batch_next_states, self.actor_target(batch_next_states))
@@ -183,6 +184,12 @@ class DDPGBase(object):
         loss_a.backward()
         self.actor_optim.step()
         return td_error.detach().cpu().numpy(), loss_a.detach().cpu().numpy()
+    
+    def learn(self):
+        c_loss, a_loss = self._learn()
+        if self.summary_writer:
+            self.summary_writer.add_scalar('c_loss', c_loss, self.step)
+            self.summary_writer.add_scalar('a_loss', a_loss, self.step)
 
     def _add_step(self, s, a, r, d, s_):
         """向经验回放池添加一条记录"""
