@@ -70,7 +70,7 @@ class DDPGBase(object):
         如果指定了保存路径就使用保存路径，否则使用默认路径
         """
         if self.summary:
-            if 'summary_path' in kwargs:
+            if 'summary_path' in self.kwargs:
                 self.summary_writer = SummaryWriter(log_dir=kwargs['summary_path'])
                 self._build_summary_writer(kwargs['summary_path'])
             else:
