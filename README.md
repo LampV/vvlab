@@ -3,7 +3,7 @@
  * @create time: 2020-01-15 16:42
  * @edit time    : 2020-01-15 16:57
  -->
-# 强化学习工具包  
+# VVLAB  
 
 基于`Pytorch`与`OpenAI Gym`实现强化学习的工具包  
 
