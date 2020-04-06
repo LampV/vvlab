@@ -1,20 +1,6 @@
-#!/usr/bin/env python
-# coding=utf-8
-"""
-@author: Jiawei Wu
-@create time: 2019-12-04 10:40
-@edit time: 2020-01-14 17:10
-@file: /exp_replay.py
-"""
-
-import torch
-from torch.autograd import Variable
-import numpy as np
-
 
 class ExpReplay:
-    """
-    使用类似Q-Learning算法的DRL通用的经验回放池
+    """经验回放池
     1. 经验回放池的一条记录
         (state, action, reward, done, next_state) 或简写为 (s, a, r, d, s_)
         其中done的意义在于，当状态为done的时候，Q估计=r，而不是Q估计=(r + gamma * Q'max)
@@ -127,25 +113,3 @@ class ExpReplay:
         else:
             return (torch.from_numpy(ndarray).type(dtype).cuda() for ndarray in batch) if CUDA else (torch.from_numpy(ndarray).type(dtype) for ndarray in batch)
 
-
-class OUProcess(object):
-    """Ornstein-Uhlenbeck process"""
-
-    def __init__(self, x_size, mu=0, theta=0.15, sigma=0.3):
-        self.x = np.ones(x_size) * mu
-        self.x_size = x_size
-        self.mu = mu
-        self.theta = theta
-        self.sigma = sigma
-
-    def noise(self):
-        dx = self.theta * (self.mu - self.x) + self.sigma * np.random.randn(self.x_size)
-        self.x = self.x + dx
-        return self.x
-
-
-def soft_update(target, source, tau):
-    for target_param, param in zip(target.parameters(), source.parameters()):
-        target_param.data.copy_(
-            target_param.data * (1.0 - tau) + param.data * tau
-        )
