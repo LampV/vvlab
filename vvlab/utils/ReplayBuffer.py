@@ -3,11 +3,12 @@
 """
 @author: Jiawei Wu
 @create time: 2020-04-05 19:48
-@edit time: 2020-04-06 15:44
+@edit time: 2020-04-06 15:46
 @FilePath: /vvlab/utils/ReplayBuffer.py
 @desc: 经验回放池
 """
 import numpy as np
+import torch
 
 
 class ReplayBuffer:
@@ -39,12 +40,10 @@ class ReplayBuffer:
             >>> batch = self.memory.get_batch_splited_tensor(CUDA, batch_size)
     """
 
-    def __init__(self, n_states, n_actions, buff_size=1000, buff_thres=None, batch_size=32):
+    def __init__(self, n_states, n_actions, buff_size=1000, buff_thres=0, batch_size=32):
         """初始化经验回放池"""
         # 参数复制与定义
         self.n_states, self.n_actions = n_states, n_actions
-        if not buff_thres:
-            buff_thres = buff_size // 10
         self.buff_size, self.buff_thres = buff_size, buff_thres
         self.batch_size = batch_size
         # 初始化经验回放池
@@ -123,4 +122,3 @@ class ReplayBuffer:
             return batch
         else:
             return (torch.from_numpy(ndarray).type(dtype).cuda() for ndarray in batch) if CUDA else (torch.from_numpy(ndarray).type(dtype) for ndarray in batch)
-
