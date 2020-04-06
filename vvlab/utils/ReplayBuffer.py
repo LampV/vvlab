@@ -1,5 +1,16 @@
+#!/usr/bin/env python
+# coding=utf-8
+"""
+@author: Jiawei Wu
+@create time: 2020-04-05 19:48
+@edit time: 2020-04-06 15:44
+@FilePath: /vvlab/utils/ReplayBuffer.py
+@desc: 经验回放池
+"""
+import numpy as np
 
-class ExpReplay:
+
+class ReplayBuffer:
     """经验回放池
     1. 经验回放池的一条记录
         (state, action, reward, done, next_state) 或简写为 (s, a, r, d, s_)
@@ -8,19 +19,19 @@ class ExpReplay:
     2. 经验回放池的参数
         - n_states: state的维度
         - n_actions: action的维度
-        - exp_size: 经验回放池的容量上限。达到这个上限之后，后续的记录就会覆盖之前的记录。
+        - buff_size: 经验回放池的容量上限。达到这个上限之后，后续的记录就会覆盖之前的记录。
             默认值是: 1000
         - MIN_MEN: 经验回放池输出的最小数目。记录数目超过阈值之后，获取batch才会获得输出
-            默认值是: exp_size//10
+            默认值是: buff_size//10
         - batch_size: 一个batch的大小。
             默认值是: 32
     3. 经验回放池的功能
         - 创建经验回放池对象
-            >>> self.memory = ExpReplay(n_states,  n_actions, exp_size=exp_size, exp_thres=exp_thres)
+            >>> self.memory = ReplayBuffer(n_states,  n_actions, buff_size=buff_size, buff_thres=buff_thres)
         - 添加一条记录
             >>> self.memory.add_step(s, a, r, d, s_)
             将这条记录放到经验回放池的顺序位置上，例如：
-                第一条记录在位置0，第2条记录在位置1，第exp_size+1条记录在位置0
+                第一条记录在位置0，第2条记录在位置1，第buff_size+1条记录在位置0
         - 获取一个batch用于训练
             >>> s, a, r, d, s_ = memery.get_batch_splited()
         - 获取一个已经被转为pytorch Variable的batch用于训练
@@ -28,24 +39,24 @@ class ExpReplay:
             >>> batch = self.memory.get_batch_splited_tensor(CUDA, batch_size)
     """
 
-    def __init__(self, n_states, n_actions, exp_size=1000, exp_thres=None, batch_size=32):
+    def __init__(self, n_states, n_actions, buff_size=1000, buff_thres=None, batch_size=32):
         """初始化经验回放池"""
         # 参数复制与定义
         self.n_states, self.n_actions = n_states, n_actions
-        if not exp_thres:
-            exp_thres = exp_size // 10
-        self.exp_size, self.exp_thres = exp_size, exp_thres
+        if not buff_thres:
+            buff_thres = buff_size // 10
+        self.buff_size, self.buff_thres = buff_size, buff_thres
         self.batch_size = batch_size
         # 初始化经验回放池
-        exp_dim = n_states * 2 + n_actions + 2
-        self.expreplay_pool = np.zeros((exp_size, exp_dim))
+        buff_dim = n_states * 2 + n_actions + 2
+        self.replay_pool = np.zeros((buff_size, buff_dim))
         # 初始化记录位置
-        self.exp_index = 0
+        self.buff_index = 0
 
     def add_step(self, *step):
         """
         为经验回放池增加一步，我们约定“一步”包括s, a, r, d, s_五个部分
-        将这一步的信息整合为一条记录，放置到exp_index指定的位置。之后，exp_index以exp_size为模+1
+        将这一步的信息整合为一条记录，放置到buff_index指定的位置。之后，buff_index以buff_size为模+1
         即后来的记录会覆盖掉最早的记录
 
         @param *step: 接收一条需要被添加到经验回放池的记录，要求按照s, a, r, d, s_的顺序给出
@@ -54,12 +65,12 @@ class ExpReplay:
         s, a, r, d, s_ = step
         step = np.hstack((s.reshape(-1), a, [r], [d], s_.reshape(-1)))
         # step 添加到经验回放池
-        index = self.exp_index % self.exp_size
-        self.expreplay_pool[index] = step
-        # 更改exp_index位置，并确保不会int溢出
-        self.exp_index += 1
-        if self.exp_index > 2 * self.exp_size:
-            self.exp_index -= self.exp_size
+        index = self.buff_index % self.buff_size
+        self.replay_pool[index] = step
+        # 更改buff_index位置，并确保不会int溢出
+        self.buff_index += 1
+        if self.buff_index > 2 * self.buff_size:
+            self.buff_index -= self.buff_size
 
     def get_batch(self, batch_size=None):
         """
@@ -71,10 +82,10 @@ class ExpReplay:
         """
         batch_size = batch_size if batch_size else self.batch_size
         # 超过输出阈值的时候才返回batch
-        if self.exp_index >= self.exp_thres:
-            expreplay_pool_size = min(self.exp_index, self.exp_size)
-            choice_indexs = np.random.choice(expreplay_pool_size, batch_size)
-            return self.expreplay_pool[choice_indexs]
+        if self.buff_index >= self.buff_thres:
+            replay_pool_size = min(self.buff_index, self.buff_size)
+            choice_indexs = np.random.choice(replay_pool_size, batch_size)
+            return self.replay_pool[choice_indexs]
         else:
             return None
 
