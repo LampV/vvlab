@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2019-12-04 10:36
-@edit time: 2020-04-07 19:37
+@edit time: 2020-04-07 19:48
 @FilePath: /vvlab/agents/DDPG_base.py
 """
 import numpy as np
@@ -28,25 +28,29 @@ class DDPGBase(object):
                  lr_a=0.001, lr_c=0.002, tau=0.01, gamma=0.9,
                  summary=False, *args, **kwargs):
         # 兼容参数
-        if 'bound' in args:
-            warnings.warn("'bound' is deprecated. Use 'action_bound' instead.",
+        # TODO 在0.3.0删除参数兼容
+        if 'bound' in kwargs:
+            warnings.warn("'bound' is deprecated and will remove after 0.3.0. "
+                          "Use 'action_bound' instead.",
                           DeprecationWarning, stacklevel=2)
-            action_bound = args.bound
-            self.bound = bound
-        if 'exp_size' in args:
-            warnings.warn("'exp_size' is deprecated. Use 'buff_size' instead.",
+            action_bound = kwargs['bound']
+            self.bound = action_bound
+        if 'exp_size' in kwargs:
+            warnings.warn("'exp_size' is deprecated and will remove after 0.3.0. "
+                          "Use 'buff_size' instead.",
                           DeprecationWarning, stacklevel=2)
-            action_bound = args.bound
-            self.bound = bound
-        if 'exp_thres' in args:
-            warnings.warn("'exp_thres' is deprecated. Use 'buff_thres' instead.",
+            buff_size = kwargs['exp_size']
+            self.exp_size = buff_size
+        if 'exp_thres' in kwargs:
+            warnings.warn("'exp_thres' is deprecated and will remove after 0.3.0. "
+                          "Use 'buff_thres' instead.",
                           DeprecationWarning, stacklevel=2)
-            action_bound = args.bound
-            self.bound = bound
-            
+            buff_thres = kwargs['exp_thres']
+            self.exp_thres = buff_thres
+
         # 参数复制
         self.n_states, self.n_actions, self.action_bound = n_states, n_actions, action_bound
-        self.exp_size, self.exp_thres, self.batch_size = exp_size, exp_thres, batch_size
+        self.buff_size, self.buff_thres, self.batch_size = buff_size, buff_thres, batch_size
         self.lr_a, self.lr_c, self.tau, self.gamma = lr_a, lr_c, tau, gamma
         self.summary = summary
         self.kwargs = kwargs
