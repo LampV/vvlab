@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2020-04-05 19:48
-@edit time: 2020-04-06 15:46
+@edit time: 2020-04-07 19:31
 @FilePath: /vvlab/utils/ReplayBuffer.py
 @desc: 经验回放池
 """
@@ -23,19 +23,19 @@ class ReplayBuffer:
         - buff_size: 经验回放池的容量上限。达到这个上限之后，后续的记录就会覆盖之前的记录。
             默认值是: 1000
         - MIN_MEN: 经验回放池输出的最小数目。记录数目超过阈值之后，获取batch才会获得输出
-            默认值是: buff_size//10
+            默认值是: 0
         - batch_size: 一个batch的大小。
             默认值是: 32
-    3. 经验回放池的功能
+    3. 经验回放池的使用
         - 创建经验回放池对象
-            >>> self.memory = ReplayBuffer(n_states,  n_actions, buff_size=buff_size, buff_thres=buff_thres)
+            >>> self.buff = ReplayBuffer(n_states=16, n_actions=4, buff_size=1000, buff_thres=64, batch_size=32)
         - 添加一条记录
-            >>> self.memory.add_step(s, a, r, d, s_)
+            >>> self.buff.add_step(s, a, r, d, s_)
             将这条记录放到经验回放池的顺序位置上，例如：
                 第一条记录在位置0，第2条记录在位置1，第buff_size+1条记录在位置0
         - 获取一个batch用于训练
-            >>> s, a, r, d, s_ = memery.get_batch_splited()
-        - 获取一个已经被转为pytorch Variable的batch用于训练
+            >>> s, a, r, d, s_ = buff.get_batch_splited()
+        - 获取一个已经被转为pytorch Tensor 的batch用于训练
             >>> CUDA = torch.cuda.is_available()
             >>> batch = self.memory.get_batch_splited_tensor(CUDA, batch_size)
     """
@@ -53,8 +53,8 @@ class ReplayBuffer:
         self.buff_index = 0
 
     def add_step(self, *step):
-        """
-        为经验回放池增加一步，我们约定“一步”包括s, a, r, d, s_五个部分
+        """为经验回放池增加一步
+        我们约定“一步”包括s, a, r, d, s_五个部分
         将这一步的信息整合为一条记录，放置到buff_index指定的位置。之后，buff_index以buff_size为模+1
         即后来的记录会覆盖掉最早的记录
 
@@ -72,11 +72,11 @@ class ReplayBuffer:
             self.buff_index -= self.buff_size
 
     def get_batch(self, batch_size=None):
-        """
-        从回放池中获取一个batch
+        """从回放池中获取一个batch
         如果经验回放池大小未达到输出阈值则返回None
 
         @param batch_size: 一个batch的大小，若不指定则按经验回放池的默认值
+        
         @return 一个batch size 的记录
         """
         batch_size = batch_size if batch_size else self.batch_size
@@ -89,10 +89,10 @@ class ReplayBuffer:
             return None
 
     def get_batch_splited(self, batch_size=None):
-        """
-        将batch按照s, a, r, d, s_的顺序分割好并返回
+        """将batch按照s, a, r, d, s_的顺序分割好并返回
 
         @param batch_size: 一个batch的大小，若不指定则按经验回放池的默认值
+        
         @return cur_states, actions, rewards, dones, nexe_states: 
             按照 (s, a, r, d, s_) 顺序分割好的一组batch 
         """
@@ -108,12 +108,12 @@ class ReplayBuffer:
             return cur_states, actions, rewards, dones, nexe_states
 
     def get_batch_splited_tensor(self, CUDA, batch_size=None, dtype=torch.FloatTensor):
-        """
-        将batch分割并转换为tensor之后返回
+        """将batch分割并转换为tensor之后返回
 
         @param CUDA: 是否使用GPU，这决定了返回变量的设备类型
         @param batch_size: 一个batch的大小，若不指定则按经验回放池的默认值
-        @param dtype: 返回变量的数据类型，默认为Float
+        @param dtype: 返回变量的数据类型，默认为 torch.FloatTensor
+        
         @return cur_states, actions, rewards, dones, nexe_states: 
             按照 (s, a, r, d, s_) 顺序分割好且已经转为torch Variable的一组batch 
         """
