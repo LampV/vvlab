@@ -3,12 +3,13 @@
 """
 @author: Jiawei Wu
 @create time: 2020-04-05 19:48
-@edit time: 2020-04-07 19:31
+@edit time: 2020-04-07 19:58
 @FilePath: /vvlab/utils/ReplayBuffer.py
 @desc: 经验回放池
 """
 import numpy as np
 import torch
+from .config import CUDA
 
 
 class ReplayBuffer:
@@ -107,18 +108,19 @@ class ReplayBuffer:
             nexe_states = batch[:, -self.n_states:]
             return cur_states, actions, rewards, dones, nexe_states
 
-    def get_batch_splited_tensor(self, CUDA, batch_size=None, dtype=torch.FloatTensor):
+    def get_batch_splited_tensor(self, gpu=None, batch_size=None, dtype=torch.FloatTensor):
         """将batch分割并转换为tensor之后返回
 
-        @param CUDA: 是否使用GPU，这决定了返回变量的设备类型
+        @param gpu: 是否使用GPU，这决定了返回变量的设备类型
         @param batch_size: 一个batch的大小，若不指定则按经验回放池的默认值
         @param dtype: 返回变量的数据类型，默认为 torch.FloatTensor
         
         @return cur_states, actions, rewards, dones, nexe_states: 
             按照 (s, a, r, d, s_) 顺序分割好且已经转为torch Variable的一组batch 
         """
+        gpu = gpu if gpu is not None else CUDA
         batch = self.get_batch_splited(batch_size)
         if batch is None:
             return batch
         else:
-            return (torch.from_numpy(ndarray).type(dtype).cuda() for ndarray in batch) if CUDA else (torch.from_numpy(ndarray).type(dtype) for ndarray in batch)
+            return (torch.from_numpy(ndarray).type(dtype).cuda() for ndarray in batch) if gpu else (torch.from_numpy(ndarray).type(dtype) for ndarray in batch)
