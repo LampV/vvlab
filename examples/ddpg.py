@@ -3,8 +3,8 @@
 """
 @author: Jiawei Wu
 @create time: 2019-12-06 23:01
-@edit time: 2020-01-15 17:00
-@file: /test.py
+@edit time: 2020-04-07 19:43
+@FilePath: /examples/ddpg.py
 """
 
 import torch
@@ -58,7 +58,7 @@ def rl_loop():
     a_dim = env.action_space.shape[0]
     a_bound = env.action_space.high
 
-    ddpg = DDPG(s_dim, a_dim, a_bound)
+    ddpg = DDPG(n_states=s_dim, n_actions=a_dim, bound=a_bound)
     t1 = time.time()
     for i in range(MAX_EPISODES):
         s = env.reset()
