@@ -3,12 +3,12 @@
 """
 @author: Jiawei Wu
 @create time: 2020-03-18 11:52
-@edit time: 2020-03-30 10:12
-@file: /RL4Net-lib/wjwgym-home/wjwgym/__version__.py
+@edit time: 2020-04-07 19:41
+@FilePath: /vvlab/__version__.py
 """
 
 
 
-VERSION = (0, 1, 6)
+VERSION = (0, 1, 8)
 
 __version__ = '.'.join(map(str, VERSION))
