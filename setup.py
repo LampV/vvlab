@@ -3,8 +3,8 @@
 """
 @author: Jiawei Wu
 @create time: 2019-11-25 11:08
-@edit time: 2020-01-15 16:20
-@file: /wjwgym-home/setup.py
+@edit time: 2020-04-07 19:41
+@FilePath: /setup.py
 """
 
 # Note: To use the 'upload' functionality of this file, you must:
@@ -24,7 +24,7 @@ URL = 'https://github.com/LampV/Reinforcement-Learning'
 EMAIL = '13260322877@163.com'
 AUTHOR = 'Jiawei Wu',
 REQUIRES_PYTHON = '>=3.6.0'
-VERSION = '0.1.7'
+VERSION = '0.1.9'
 
 # What packages are required for this module to be executed?
 REQUIRED = [
