@@ -3,37 +3,51 @@
 """
 @author: Jiawei Wu
 @create time: 2019-12-04 10:36
-@edit time: 2020-01-14 17:24
-@file: ./DDPG_torch.py
+@edit time: 2020-04-07 18:14
+@FilePath: /vvlab/agents/DDPG_base.py
 """
 import numpy as np
 import os
+import logging
 import torch.nn as nn
 import torch
 from torch.utils.tensorboard import SummaryWriter
-from .Utils import ExpReplay, soft_update, OUProcess
-CUDA = torch.cuda.is_available()
+from ..utils import CUDA, OUProcess, ReplayBuffer
+import warnings
+
+
+def soft_update(target, source, tau):
+    for target_param, param in zip(target.parameters(), source.parameters()):
+        target_param.data.copy_(
+            target_param.data * (1.0 - tau) + param.data * tau
+        )
 
 
 class DDPGBase(object):
-    def __init__(self, n_states, n_actions, bound=1, exp_size=10000, exp_thres=None, batch_size=32,
+    def __init__(self, n_states, n_actions, action_bound=1, exp_size=10000, exp_thres=None, batch_size=32,
                  lr_a=0.001, lr_c=0.002, tau=0.01, gamma=0.9,
-                 summary=False, **kwargs):
+                 summary=False, *args, **kwargs):
+        # 兼容参数
+        if 'bound' in args:
+            warnings.warn("'bound' is deprecated. Use action_bound instead.",
+                          DeprecationWarning, stacklevel=2)
+            action_bound = args.bound
+            self.bound = bound
         # 参数复制
-        self.n_states, self.n_actions, self.bound = n_states, n_actions, bound
+        self.n_states, self.n_actions, self.action_bound = n_states, n_actions, action_bound
         self.exp_size, self.exp_thres, self.batch_size = exp_size, exp_thres, batch_size
         self.lr_a, self.lr_c, self.tau, self.gamma = lr_a, lr_c, tau, gamma
         self.summary = summary
         self.kwargs = kwargs
-        
+
         # 初始化episode和step
         self.episode, self.step = 0, 0
         # 参数覆盖
         self._param_override()
-        
+
         # 创建经验回放池
-        self.memory = ExpReplay(self.n_states, self.n_actions, exp_size=self.exp_size, exp_thres=self.exp_thres)
-        
+        self.memory = ReplayBuffer(self.n_states, self.n_actions, exp_size=self.exp_size, exp_thres=self.exp_thres)
+
         # 创建神经网络
         self._build_net()
         # 指定优化器
@@ -41,17 +55,17 @@ class DDPGBase(object):
         self.critic_optim = torch.optim.Adam(self.critic_eval.parameters(), lr=self.lr_c)
         # 约定损失函数
         self.mse_loss = nn.MSELoss()
-        
+
         # 指定噪声发生器
         self._build_noise()
-        
+
         # 指定summary writer
         self._build_summary_writer()
-        
+
         # 开启cuda
         if CUDA:
             self.cuda()
-            
+
     def _param_override(self):
         """覆盖参数
         提供子类简单覆写基类参数的方法
@@ -164,7 +178,7 @@ class DDPGBase(object):
         else:
             self.start_train = True
         batch_cur_states, batch_actions, batch_rewards, batch_dones, batch_next_states = batch
-        
+
         # 计算target_q，指导cirtic更新
         # 通过a_target和next_state计算target网络会选择的下一动作 next_action；通过target_q和next_states、刚刚计算的next_actions计算下一状态的q_values
         target_q_next = self.critic_target(batch_next_states, self.actor_target(batch_next_states))
@@ -184,7 +198,7 @@ class DDPGBase(object):
         loss_a.backward()
         self.actor_optim.step()
         return td_error.detach().cpu().numpy(), loss_a.detach().cpu().numpy()
-    
+
     def learn(self):
         c_loss, a_loss = self._learn()
         if all((c_loss is not None, a_loss is not None)):
@@ -196,7 +210,7 @@ class DDPGBase(object):
     def _add_step(self, s, a, r, d, s_):
         """向经验回放池添加一条记录"""
         self.memory.add_step(s, a, r, d, s_)
-        
+
     def add_step(self, s, a, r, d, s_):
         """添加记录的默认实现
         除了添加记录之外不做任何操作
