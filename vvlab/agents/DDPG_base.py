@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2019-12-04 10:36
-@edit time: 2020-04-07 19:51
+@edit time: 2020-04-07 19:55
 @FilePath: /vvlab/agents/DDPG_base.py
 """
 import numpy as np
@@ -12,15 +12,8 @@ import logging
 import torch.nn as nn
 import torch
 from torch.utils.tensorboard import SummaryWriter
-from ..utils import CUDA, OUProcess, ReplayBuffer
+from ..utils import CUDA, OUProcess, ReplayBuffer, soft_update
 import warnings
-
-
-def soft_update(target, source, tau):
-    for target_param, param in zip(target.parameters(), source.parameters()):
-        target_param.data.copy_(
-            target_param.data * (1.0 - tau) + param.data * tau
-        )
 
 
 class DDPGBase(object):
