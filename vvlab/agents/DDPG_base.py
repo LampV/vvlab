@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2019-12-04 10:36
-@edit time: 2020-04-07 19:48
+@edit time: 2020-04-07 19:51
 @FilePath: /vvlab/agents/DDPG_base.py
 """
 import numpy as np
@@ -61,7 +61,7 @@ class DDPGBase(object):
         self._param_override()
 
         # 创建经验回放池
-        self.memory = ReplayBuffer(self.n_states, self.n_actions, buff_size=self.buff_size, buff_thres=self.buff_thres)
+        self.buff = ReplayBuffer(self.n_states, self.n_actions, buff_size=self.buff_size, buff_thres=self.buff_thres)
 
         # 创建神经网络
         self._build_net()
@@ -187,7 +187,7 @@ class DDPGBase(object):
         soft_update(self.critic_target, self.critic_eval, self.tau)
 
         # 获取batch并拆解
-        batch = self.memory.get_batch_splited_tensor(CUDA, self.batch_size)
+        batch = self.buff.get_batch_splited_tensor(CUDA, self.batch_size)
         if batch is None:
             return None, None
         else:
@@ -224,7 +224,7 @@ class DDPGBase(object):
 
     def _add_step(self, s, a, r, d, s_):
         """向经验回放池添加一条记录"""
-        self.memory.add_step(s, a, r, d, s_)
+        self.buff.add_step(s, a, r, d, s_)
 
     def add_step(self, s, a, r, d, s_):
         """添加记录的默认实现
