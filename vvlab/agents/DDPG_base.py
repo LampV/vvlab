@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2019-12-04 10:36
-@edit time: 2020-04-07 18:14
+@edit time: 2020-04-07 19:37
 @FilePath: /vvlab/agents/DDPG_base.py
 """
 import numpy as np
@@ -24,15 +24,26 @@ def soft_update(target, source, tau):
 
 
 class DDPGBase(object):
-    def __init__(self, n_states, n_actions, action_bound=1, exp_size=10000, exp_thres=None, batch_size=32,
+    def __init__(self, n_states, n_actions, action_bound=1, buff_size=1000, buff_thres=0, batch_size=32,
                  lr_a=0.001, lr_c=0.002, tau=0.01, gamma=0.9,
                  summary=False, *args, **kwargs):
         # 兼容参数
         if 'bound' in args:
-            warnings.warn("'bound' is deprecated. Use action_bound instead.",
+            warnings.warn("'bound' is deprecated. Use 'action_bound' instead.",
                           DeprecationWarning, stacklevel=2)
             action_bound = args.bound
             self.bound = bound
+        if 'exp_size' in args:
+            warnings.warn("'exp_size' is deprecated. Use 'buff_size' instead.",
+                          DeprecationWarning, stacklevel=2)
+            action_bound = args.bound
+            self.bound = bound
+        if 'exp_thres' in args:
+            warnings.warn("'exp_thres' is deprecated. Use 'buff_thres' instead.",
+                          DeprecationWarning, stacklevel=2)
+            action_bound = args.bound
+            self.bound = bound
+            
         # 参数复制
         self.n_states, self.n_actions, self.action_bound = n_states, n_actions, action_bound
         self.exp_size, self.exp_thres, self.batch_size = exp_size, exp_thres, batch_size
@@ -46,7 +57,7 @@ class DDPGBase(object):
         self._param_override()
 
         # 创建经验回放池
-        self.memory = ReplayBuffer(self.n_states, self.n_actions, exp_size=self.exp_size, exp_thres=self.exp_thres)
+        self.memory = ReplayBuffer(self.n_states, self.n_actions, buff_size=self.buff_size, buff_thres=self.buff_thres)
 
         # 创建神经网络
         self._build_net()
