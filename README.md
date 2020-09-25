@@ -1,8 +1,3 @@
-<!--
- * @author       : Jiawei Wu
- * @create time: 2020-01-15 16:42
- * @edit time    : 2020-01-15 16:57
- -->
 # VVLAB  
 
 基于`Pytorch`与`OpenAI Gym`实现强化学习的工具包  
@@ -12,7 +7,13 @@
 注意： 工具包有使用pytorch和numpy，建议使用conda新建环境后安装。  
 
 1. 安装工具包  
-   从GitHub下载包  
+   vvlab 在PyPI上注册，要求python3.6及以上的版本。你可以简单通过
+   ```bash
+   pip install vvlab
+   ```
+   安装vvlab。
+
+   你也可以从GitHub下载包  
 
    ```bash
    git clone https://github.com/LampV/Reinforcement-Learning
@@ -27,7 +28,7 @@
    安装vvlab到本地
 
    ```bash
-   pip install ./src
+   pip install vvlab
     ```
 
 2. 运行示例  
