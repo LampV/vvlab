@@ -3,8 +3,8 @@
 """
 @create time: 2019-11-21 11:17
 @author: Jiawei Wu
-@edit time: 2020-01-15 17:02
-@file: /test.py
+@edit time: 2020-09-25 16:12
+@FilePath: /vvlab/examples/sarsa.py
 """
 
 import time
@@ -74,5 +74,5 @@ def rl_loop(env, agent):
 
 if __name__ == "__main__":
     env = gym.make('Maze-v0')
-    RL = Sarsa(actions=list(range(enviornment.action_space.n)))
+    RL = Sarsa(actions=list(range(env.action_space.n)))
     rl_loop(env, RL)
