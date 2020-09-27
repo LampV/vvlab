@@ -13,7 +13,12 @@
    ```
    安装vvlab。
 
-   你也可以从GitHub下载包  
+   你也可以从GitHub安装：
+   ```bash
+   pip install git+https://github.com/LampV/Reinforcement-Learning.git@master
+   ```
+   
+   或者下载到本地之后再安装：  
 
    ```bash
    git clone https://github.com/LampV/Reinforcement-Learning
@@ -28,7 +33,7 @@
    安装vvlab到本地
 
    ```bash
-   pip install vvlab
+   pip install .
     ```
 
 2. 运行示例  
