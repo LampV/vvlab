@@ -12,7 +12,8 @@ import logging
 import torch.nn as nn
 import torch
 from torch.utils.tensorboard import SummaryWriter
-from ..utils import CUDA, OUProcess, ReplayBuffer, soft_update
+from ..utils import CUDA, OUProcess, ReplayBuffer
+from ..utils.update import soft_update
 import warnings
 
 
