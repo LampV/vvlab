@@ -9,7 +9,6 @@
 
 
 from gym.envs.registration import register
-
 register(
     id='FindTreasure-v0',
     entry_point='vvlab.envs.findtreasure_env:FindTreasureEnv',
@@ -17,4 +16,8 @@ register(
 register(
     id='Maze-v0',
     entry_point='vvlab.envs.maze_env:MazeEnv',
+)
+register(
+    id='PC-v0',
+    entry_point='vvlab.envs.PC_env:radio_environment',
 )
