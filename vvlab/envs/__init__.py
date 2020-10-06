@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2019-12-06 23:15
-@edit time: 2020-03-30 10:13
+@edit time: 2020-10-06 16:19
 @desc: envs的init文件
 """
 
@@ -20,4 +20,8 @@ register(
 register(
     id='PC-v0',
     entry_point='vvlab.envs.PC_env:radio_environment',
+)
+register(
+    id='PA-v0',
+    entry_point='vvlab.envs.power_allocation.pa_env:PAEnv',
 )
