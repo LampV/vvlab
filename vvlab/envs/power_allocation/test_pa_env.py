@@ -1,5 +1,5 @@
 from pa_env import (
-    Environment,
+    PAEnv,
     Node
 )
 import numpy as np
@@ -26,14 +26,14 @@ devices = {
 
 def test_init_power_level():
     """test transmit powers"""
-    env = Environment(n_levels=4, min_power=10, max_power=30)
+    env = PAEnv(n_levels=4, min_power=10, max_power=30)
     power_levels = env.power_levels
     assert all(power_levels == [0., 0.01, 0.1, 1.])
 
 
 def test_init_pos():
     """test position constraint"""
-    env = Environment(n_levels=4)
+    env = PAEnv(n_levels=4)
 
     def dis(node, target):
         return np.sqrt(
@@ -81,7 +81,7 @@ def test_jakes():
 
 def test_init_path_loss():
     """test distance, since lognormal is random"""
-    env = Environment(n_levels=4, n_t_devices=2, m_r_devices=1, m_usrs=2)
+    env = PAEnv(n_levels=4, n_t_devices=2, m_r_devices=1, m_usrs=2)
     env.users = users
     env.devices = devices
     env.init_path_loss()
@@ -100,7 +100,7 @@ def test_init_path_loss():
 
 def test_cal_rate():
     """test rate calc"""
-    env = Environment(n_levels=4, n_t_devices=2, m_r_devices=1, m_usrs=2)
+    env = PAEnv(n_levels=4, n_t_devices=2, m_r_devices=1, m_usrs=2)
     power = [0.01, 0.01, 0.1, 0.1]
     loss = np.array([
         [1e-1, 1e-3, 1e-2, 1e-2],
@@ -114,7 +114,7 @@ def test_cal_rate():
 
 
 def test_get_state():
-    env = Environment(n_levels=4, n_t_devices=2, m_r_devices=1, m_usrs=2)
+    env = PAEnv(n_levels=4, n_t_devices=2, m_r_devices=1, m_usrs=2)
     power = [0.01, 0.02, 0.03, 0.04]
     loss = np.array([
         [1.1e-1, 1.2e-3, 1.3e-2, 1.4e-2],

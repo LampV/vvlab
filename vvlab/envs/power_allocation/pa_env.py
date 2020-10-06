@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2020-09-25 11:20
-@edit time: 2020-10-06 15:17
+@edit time: 2020-10-06 15:50
 @FilePath: /vvlab/vvlab/envs/PowerAllocation/pa_env.py
 @desc: 
 Created on Sat Sep 15 11:24:43 2018
@@ -37,7 +37,7 @@ train_interval = 10
 batch_size = 256
 
 
-class Environment:
+class PAEnv:
     @property
     def n_states(self):
         """return dim of state"""
