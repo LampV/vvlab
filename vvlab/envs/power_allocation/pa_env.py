@@ -3,8 +3,8 @@
 """
 @author: Jiawei Wu
 @create time: 2020-09-25 11:20
-@edit time: 2020-10-06 15:50
-@FilePath: /vvlab/vvlab/envs/PowerAllocation/pa_env.py
+@edit time: 2020-10-06 17:26
+@FilePath: /vvlab/vvlab/envs/power_allocation/pa_env.py
 @desc: 
 Created on Sat Sep 15 11:24:43 2018
 Q / gamma = 0
@@ -202,6 +202,7 @@ class PAEnv:
 
     def reset(self):
         self.cur_step = 0
+        return np.random.random((self.n_recvs, 3*self.m_state+2))
 
     def sample(self):
         sample_action = np.random.randint(0, 10, self.n_t * self.m_r)
