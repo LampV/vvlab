@@ -4,20 +4,9 @@
 Created on Wed Feb 27 13:31:50 2019
 @author: farismismar
 """
-
-import time
-# Deep with GPU and CPU fallback
-#from DQNLearningAgent import DQNLearningAgent as QLearner
-#from environment import radio_environment
-import matplotlib.ticker as tick
-import matplotlib.pyplot as plt
-import matplotlib
-from colorama import Fore, Back, Style
-import random
 import gym
-from keras import backend as K
 import math
-from gym import spaces, logger
+from gym import spaces
 from gym.utils import seeding
 import numpy as np
 from numpy import linalg as LA

@@ -5,7 +5,7 @@ Created on Wed Sep 16 15:15:30 2020
 @author: yhh18
 @desc: 公式测试environment
 """
-from vvlab.envs.PC_env import radio_environment
+from PC_env import radio_environment
 import math
 
 
