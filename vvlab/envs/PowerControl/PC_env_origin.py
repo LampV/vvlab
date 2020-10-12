@@ -6,7 +6,7 @@ Created on Wed Feb 27 13:31:50 2019
 """
 
 import math
-from gym import spaces, logger
+from gym import spaces
 from gym.utils import seeding
 import numpy as np
 from numpy import linalg as LA
