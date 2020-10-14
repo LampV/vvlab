@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2020-09-25 11:20
-@edit time: 2020-10-14 15:00
+@edit time: 2020-10-14 15:02
 @FilePath: /vvlab/vvlab/envs/power_allocation/pa_env.py
 @desc: 
 Created on Sat Sep 15 11:24:43 2018
@@ -183,7 +183,7 @@ class PAEnv:
 
     def __init__(self, n_levels, n_t_devices=6, m_r_devices=1, n_bs=1, m_usrs=4, **kwargs):
         """初始化环境"""
-        # 赋值参数
+        # set sttributes
         self.n_t, self.m_r, self.n_bs, self.m_usr = n_t_devices, m_r_devices, n_bs, m_usrs
         self.n_recvs = self.n_t * self.m_r + self.n_bs * self.m_usr
         self.r_dev, self.r_bs, self.R_dev, self.R_bs = 0.01, 0.01, 0.1, 1
@@ -191,13 +191,20 @@ class PAEnv:
         self.min_power, self.max_power, self.thres_power = 5., 38., -114.  # dBm
         self.m_state = 16
         self.__dict__.update(kwargs)
-        # pprint(self.__dict__)
+        # set random seed
+        if 'seed' in kwargs:
+            if kwargs['seed'] > 1:
+                seed=kwargs['seed']
+            else:
+                seed=799345
+            np.random.seed(seed)
+            print(f'PAEnv set random seed {seed}')
 
-        # 初始化环境
+        # init attributes of pa env
         self.init_power_levels()
-        self.init_pos()  # 初始化用户位置
-        self.init_jakes(Ns=self.Ns)  # 初始化快衰落系数
-        self.init_path_loss(slope=0)  # 初始化路损
+        self.init_pos()  # init recv pos
+        self.init_jakes(Ns=self.Ns)  # init rayleigh loss using jakes model
+        self.init_path_loss(slope=0)  # init path loss
         self.cur_step = 0
 
     def reset(self):
