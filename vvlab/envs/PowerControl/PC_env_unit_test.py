@@ -6,8 +6,7 @@ Created on Wed Sep 16 15:15:30 2020
 @desc: 单元测试environment
 """
 
-from vvlab.envs.PC_env import radio_environment
-import math
+from PC_env import radio_environment
 import pytest
 import numpy as np
 
