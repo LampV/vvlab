@@ -1,76 +1,91 @@
-# VVLAB  
+# VVLAB
 
-基于`Pytorch`与`OpenAI Gym`实现强化学习的工具包  
+VVLAB is a reinforcement learning platform based on Pytorch and OpenAI Gym.The supported interface algorithms currently include:
 
-## 安装  
+- Sarsa
 
-注意： 工具包有使用pytorch和numpy，建议使用conda新建环境后安装。  
+- Qlearning
 
-1. 安装工具包  
-   vvlab 在PyPI上注册，要求python3.6及以上的版本。你可以简单通过
-   ```bash
-   pip install vvlab
-   ```
-   安装vvlab。
+- Deep Q-Network (DQN)
 
-   你也可以从GitHub安装：
-   ```bash
-   pip install git+https://github.com/LampV/Reinforcement-Learning.git@master
-   ```
-   
-   或者下载到本地之后再安装：  
+- Deep Deterministic Policy Gardient (DDPG)
 
-   ```bash
-   git clone https://github.com/LampV/Reinforcement-Learning
-   ```
+## Installation
 
-   进入文件夹
+**Notice:** The platform uses pytorch and numpy. It is recommended to use conda to create a new environment and install it.
 
-   ```bash
-   cd Reinforcement-Learning
-   ```
+VVLAB is currently hosted on PyPI. It requires Python >= 3.6.
 
-   安装vvlab到本地
+You can simply install VVLAB from PyPI with the following command:
 
-   ```bash
-   pip install .
-    ```
+```python
+pip install vvlab
+```
 
-2. 运行示例  
+You can also install with the newest version through GitHub:
 
-   ```bash
-   python examples.ddpg.py
-   ```
+```python
+pip install git+https://github.com/LampV/Reinforcement-Learning.git@master
+```
 
-   若程序正常运行，说明安装成功
+Or install it after downloading it locally:
 
-## 使用  
+```python
+git clone https://github.com/LampV/Reinforcement-Learning
+```
 
-1. agents  
-   通过`vvlab.agents`中提供的基类可以创建自己的强化学习智能体，其通用方法如下：  
+Enter folder and install it with pip:
 
-   ```python
-   # import 基类
-   from vvlab.agents import xxxBase
-   # 继承基类并实现必要的函数  
-   class myxxx(xxxBase):  
-       def _build_net(self):
-           pass
-   ```
+```python
+cd Reinforcement-Learning
+pip install .
+```
 
-   具体的使用方式在`examples/`下都能找到代码示例和注释文档
+After installation, run examples :
 
-2. models  
-   要调用简单的pytorch神经网络结构作为DRL的神经网络，只需要`import`即可  
+```python
+python examples/ddpg.py
+```
 
-   ```python
-   from vvlab.models import SimpleDQNNet
-   ```
+If no error occurs, you have successfully installed VVLAB.
 
-3. envs  
-   要调用附带的envs，需要让 `__init__.py` 中的代码执行以注册到 `gym`，之后按照标准的`gym`方式创建即可：  
+## Documentation
 
-   ```python
-   import vvlab  
-   env = gym.make('Maze-v0)
-   ```
+Todo
+
+## Quick Start
+
+You can create your own reinforcement learning agent through the base class provided in `vvlab.agents`.The general method is as follows:
+
+```python
+# import base class
+from vvlab.agents import xxxBase
+# inherit and complete necessary methods
+class myxxx(xxxBase):  
+    def _build_net(self):
+        pass
+```
+
+learn more about the usage, by codes examples and  annotated documentations under `examples/` .
+
+
+
+Simple neural networks built on pytorch are also provided in `vvlab.models`. You can take it as a simple implement of DRL neural network.
+
+```python
+from vvlab.models import SimpleDQNNet
+```
+
+
+
+Third, if you want to call the attached envs, you should run  `__init__.py` to register to `gym`. After that you can use standard `gym` methods to create it.
+
+```python
+import vvlab  
+env = gym.make('Maze-v0')
+```
+
+## Contributing
+
+VVALB is still under development. More algorithms and features are going to be added and we always welcome contributions to help make VVLAB better. If you would like to contribute, please check out this link.
+
