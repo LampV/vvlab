@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2020-09-25 11:20
-@edit time: 2020-10-14 14:58
+@edit time: 2020-10-14 15:00
 @FilePath: /vvlab/vvlab/envs/power_allocation/pa_env.py
 @desc: 
 Created on Sat Sep 15 11:24:43 2018
@@ -286,7 +286,8 @@ class PAEnv:
         state = self.get_state(rate, power, self.loss)
         reward = np.sum(rate)
         done = self.cur_step == self.Ns - 1
+        info = self.cur_step
 
         self.cur_step += 1
 
-        return state, reward, done, 'PA'
+        return state, reward, done, info
