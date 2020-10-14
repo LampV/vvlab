@@ -163,7 +163,7 @@ spyder-kernels==1.9.2
 srsly==1.0.2
 tensorboard==2.2.1
 tensorboard-plugin-wit==1.6.0
-tensorflow==2.2.0
+tensorflow==2.2.1
 tensorflow-estimator==2.2.0
 tensorlayer==2.2.3
 termcolor==1.1.0
