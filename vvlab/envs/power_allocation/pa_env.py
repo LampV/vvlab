@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2020-09-25 11:20
-@edit time: 2020-10-14 15:04
+@edit time: 2020-10-14 15:05
 @FilePath: /vvlab/vvlab/envs/power_allocation/pa_env.py
 @desc: 
 Created on Sat Sep 15 11:24:43 2018
@@ -194,9 +194,9 @@ class PAEnv:
         # set random seed
         if 'seed' in kwargs:
             if kwargs['seed'] > 1:
-                seed=kwargs['seed']
+                seed = kwargs['seed']
             else:
-                seed=799345
+                seed = 799345
             np.random.seed(seed)
             print(f'PAEnv set random seed {seed}')
 
@@ -291,7 +291,7 @@ class PAEnv:
         # 增加BS功率项
         power = np.concatenate((power, 10*np.ones(self.m_usr)))
         rate = self.cal_rate(power, self.loss)
-        
+
         state = self.get_state(rate, power, self.loss)
         reward = np.sum(rate)
         done = self.cur_step == self.Ns - 1
@@ -300,3 +300,23 @@ class PAEnv:
         self.cur_step += 1
 
         return state, reward, done, info
+
+    def render(self):
+        import matplotlib.pyplot as plt
+
+        plt.close('all')
+        plt.figure(1)
+        angles_circle = [i * np.pi / 180 for i in range(0, 360)]  # i先转换成double
+
+        c_x = np.cos(angles_circle)
+        c_y = np.sin(angles_circle)
+        for pair in self.devices.values():
+            t_d, r_ds = pair['t_device'], pair['r_devices']
+            tx = plt.scatter(t_d.x, t_d.y, marker='x', label='1', s=45)
+            plt.plot(t_d.x + c_x, t_d.y + c_y, 'r')  # x**2 + y**2 = 9 的圆形
+            for r_d in r_ds.values():
+                rx = plt.scatter(r_d.x, r_d.y, marker='o',
+                                 label='2', s=25, color='orange')
+        plt.xlim([-5, 5])
+        plt.ylim([-5, 5])
+        plt.show()
