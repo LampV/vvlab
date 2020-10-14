@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2020-09-25 11:20
-@edit time: 2020-10-06 17:26
+@edit time: 2020-10-14 14:54
 @FilePath: /vvlab/vvlab/envs/power_allocation/pa_env.py
 @desc: 
 Created on Sat Sep 15 11:24:43 2018
@@ -270,19 +270,20 @@ class PAEnv:
 
         return state
 
-    def step(self, action):
+    def step(self, action, raw=False):
         """每个step采用一个叠加正弦波作为快衰减"""
         h_set = self.H_set[:, :, self.cur_step]
-        loss = np.square(h_set) * self.path_loss
+        self.loss = np.square(h_set) * self.path_loss
         power = self.power_levels[action]
+
         # 增加BS功率项
         power = np.concatenate((power, 10*np.ones(self.m_usr)))
-
-        rate = self.cal_rate(power, loss)
+        rate = self.cal_rate(power, self.loss)
+        
+        state = self.get_state(rate, power, self.loss)
         reward = np.sum(rate)
-        state = self.get_state(rate, power, loss, self.m_state)
         done = self.cur_step == self.Ns - 1
 
         self.cur_step += 1
 
-        return reward, state, done, 'PA'
+        return state, reward, done, 'PA'
