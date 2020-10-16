@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2020-09-25 11:20
-@edit time: 2020-10-14 15:05
+@edit time: 2020-10-15 09:47
 @FilePath: /vvlab/vvlab/envs/power_allocation/pa_env.py
 @desc: 
 Created on Sat Sep 15 11:24:43 2018
@@ -46,11 +46,6 @@ class PAEnv:
     @property
     def n_actions(self):
         """return num of actions"""
-        return self.n_t * self.m_r
-
-    @property
-    def m_actions(self):
-        """return dim of an action"""
         return self.n_levels
 
     def init_power_levels(self):
@@ -211,7 +206,7 @@ class PAEnv:
         self.cur_step = 0
         h_set = self.H_set[:, :, self.cur_step]
         self.loss = np.square(h_set) * self.path_loss
-        return np.random.random((self.n_recvs, 3*self.m_state+2))
+        return np.random.random((self.n_t * self.m_r, 3*self.m_state+2))
 
     def sample(self):
         sample_action = np.random.randint(0, 10, self.n_t * self.m_r)
@@ -277,7 +272,7 @@ class PAEnv:
         sinr_norm_inv = sinr_norm_inv[indices1, indices2]
         state = np.hstack([rate_last, power_last, sinr_norm_inv])
 
-        return state
+        return state[:self.n_t * self.m_r]
 
     def step(self, action, raw=False):
         """每个step采用一个叠加正弦波作为快衰减"""
@@ -289,7 +284,14 @@ class PAEnv:
             power = self.power_levels[action]
 
         # 增加BS功率项
-        power = np.concatenate((power, 10*np.ones(self.m_usr)))
+        if len(power) == self.n_t * self.m_r:
+            power = np.concatenate((power, 10*np.ones(self.m_usr)))
+        elif len(power) == self.n_recvs:
+            power[self.n_t * self.m_r:] = 10*np.ones(self.m_usr)
+        else:
+            msg = f"length of power should be n_recvs({self.n_recvs})" \
+            f" or n_t*m_r({self.N_T*self.m_r}), but is {len(power)}"
+            raise ValueError(msg)
         rate = self.cal_rate(power, self.loss)
 
         state = self.get_state(rate, power, self.loss)
