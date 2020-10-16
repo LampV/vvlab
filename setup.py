@@ -22,7 +22,7 @@ NAME = 'vvlab'
 DESCRIPTION = 'Reinforcement Learning Tools'
 URL = 'https://github.com/LampV/Reinforcement-Learning'
 EMAIL = '13260322877@163.com'
-AUTHOR = 'Jiawei Wu',
+AUTHOR = 'Jiawei Wu','Yuqian Song'
 REQUIRES_PYTHON = '>=3.6.0'
 VERSION = '0.2.0'
 
