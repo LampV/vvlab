@@ -3,7 +3,7 @@
 """
 @author: ,: Jiawei Wu
 @create time: 2020-09-25 11:20
-@edit time: ,: 2020-10-21 16:38
+@edit time: ,: 2020-10-21 16:39
 @FilePath: ,: /vvlab/vvlab/envs/power_allocation/pa_env.py
 @desc: 
 Created on Sat Sep 15 11:24:43 2018
@@ -231,7 +231,7 @@ class PAEnv:
         self.cur_step = 0
         h_set = self.H_set[:, :, self.cur_step]
         self.loss = np.square(h_set) * self.path_loss
-        return np.random.random((self.n_t * self.m_r, 3*self.m_state+2))
+        return np.random.random((self.n_t * self.m_r, self.n_states))
 
     def sample(self):
         sample_action = np.random.randint(0, 10, self.n_t * self.m_r)
