@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 """
-@author: Jiawei Wu
+@author: ,: Jiawei Wu
 @create time: 2020-09-25 11:20
-@edit time: 2020-10-15 09:47
-@FilePath: /vvlab/vvlab/envs/power_allocation/pa_env.py
+@edit time: ,: 2020-10-21 16:34
+@FilePath: ,: /vvlab/vvlab/envs/power_allocation/pa_env.py
 @desc: 
 Created on Sat Sep 15 11:24:43 2018
 Q / gamma = 0
@@ -176,12 +176,12 @@ class PAEnv:
             pow(10., -(120.9 + 37.6*np.log10(distance_matrix))/10.)
         self.path_loss = path_loss
 
-    def __init__(self, n_levels, n_t_devices=6, m_r_devices=1, n_bs=1, m_usrs=4, **kwargs):
+    def __init__(self, n_levels, n_t_devices=9, m_r_devices=4, n_bs=1, m_usrs=4, **kwargs):
         """初始化环境"""
         # set sttributes
         self.n_t, self.m_r, self.n_bs, self.m_usr = n_t_devices, m_r_devices, n_bs, m_usrs
         self.n_recvs = self.n_t * self.m_r + self.n_bs * self.m_usr
-        self.r_dev, self.r_bs, self.R_dev, self.R_bs = 0.01, 0.01, 0.1, 1
+        self.r_dev, self.r_bs, self.R_dev, self.R_bs = 0.001, 0.01, 0.1, 1
         self.Ns, self.n_levels = 50, n_levels
         self.min_power, self.max_power, self.thres_power = 5., 38., -114.  # dBm
         self.m_state = 16
@@ -290,7 +290,7 @@ class PAEnv:
             power[self.n_t * self.m_r:] = 10*np.ones(self.m_usr)
         else:
             msg = f"length of power should be n_recvs({self.n_recvs})" \
-            f" or n_t*m_r({self.N_T*self.m_r}), but is {len(power)}"
+                f" or n_t*m_r({self.N_T*self.m_r}), but is {len(power)}"
             raise ValueError(msg)
         rate = self.cal_rate(power, self.loss)
 
