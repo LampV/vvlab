@@ -3,7 +3,7 @@
 """
 @author: ,: Jiawei Wu
 @create time: 2020-09-25 11:20
-@edit time: ,: 2020-10-21 16:34
+@edit time: ,: 2020-10-21 16:38
 @FilePath: ,: /vvlab/vvlab/envs/power_allocation/pa_env.py
 @desc: 
 Created on Sat Sep 15 11:24:43 2018
@@ -41,12 +41,35 @@ class PAEnv:
     @property
     def n_states(self):
         """return dim of state"""
-        return self.m_state * 3 + 2
+        part_len = {
+            'power': self.m_state + 1,
+            'rate': self.m_state + 1,
+            'fading': self.m_state
+        }
+        return sum(part_len[metric] for metric in self.metrics)
 
     @property
     def n_actions(self):
         """return num of actions"""
         return self.n_levels
+
+    def init_observation_space(self, kwargs):
+        valid_parts = ['power', 'rate', 'fading']
+        # default using power
+        sorter = kwargs['sorter'] if 'sorter' in kwargs else 'power'
+        # default using all
+        metrics = kwargs['metrics'] if 'metrics' in kwargs else valid_parts
+
+        # check data
+        if sorter not in valid_parts:
+            msg = f'sorter should in power, rate and fading, but is {sorter}'
+            raise ValueError(msg)
+        if any(metric not in valid_parts for metric in metrics):
+            msg = f'metrics should in power, rate and fading, but is {metrics}'
+            raise ValueError(msg)
+
+        # set to instance attr
+        self.sorter, self.metrics = sorter, metrics
 
     def init_power_levels(self):
         min_power, max_power = self.min_power, self.max_power
@@ -196,6 +219,7 @@ class PAEnv:
             print(f'PAEnv set random seed {seed}')
 
         # init attributes of pa env
+        self.init_observation_space(kwargs)
         self.init_power_levels()
         self.init_pos()  # init recv pos
         self.init_jakes(Ns=self.Ns)  # init rayleigh loss using jakes model
@@ -262,15 +286,29 @@ class PAEnv:
         sinr_norm_inv = np.log(1. + sinr_norm_inv) / \
             np.log(2)  # log representation
 
+        sort_param = {
+            'power': power_last[:, 1:],
+            'rate': rate_last[:, 1:],
+            'fading': sinr_norm_inv
+        }
+
+        # sorter = sinr_norm_inv
+        sorter = sort_param[self.sorter]
         indices1 = np.tile(np.expand_dims(np.linspace(
             0, n_recvs-1, num=n_recvs, dtype=np.int32), axis=1), [1, m_state])
-        indices2 = np.argsort(sinr_norm_inv, axis=1)[:, -m_state:]
+        indices2 = np.argsort(sorter, axis=1)[:, -m_state:]
+
         rate_last = np.hstack(
             [rate_last[:, 0:1], rate_last[indices1, indices2+1]])
         power_last = np.hstack(
             [power_last[:, 0:1], power_last[indices1, indices2+1]])
         sinr_norm_inv = sinr_norm_inv[indices1, indices2]
-        state = np.hstack([rate_last, power_last, sinr_norm_inv])
+        metric_param = {
+            'power': power_last,
+            'rate': rate_last,
+            'fading': sinr_norm_inv
+        }
+        state = np.hstack([metric_param[metric] for metric in self.metrics])
 
         return state[:self.n_t * self.m_r]
 
