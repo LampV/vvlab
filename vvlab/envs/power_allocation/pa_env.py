@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 """
-@author: ,: Jiawei Wu
+@author: Jiawei Wu
 @create time: 2020-09-25 11:20
-@edit time: ,: 2020-10-21 16:39
-@FilePath: ,: /vvlab/vvlab/envs/power_allocation/pa_env.py
+@edit time: 2020-10-30 14:55
+@FilePath: /vvlab/vvlab/envs/power_allocation/pa_env.py
 @desc: 
 Created on Sat Sep 15 11:24:43 2018
 Q / gamma = 0
@@ -195,8 +195,12 @@ class PAEnv:
             * np.ones((n_recvs, n_recvs))
         std = 8. + slope * (distance_matrix - min_dis)
         lognormal = np.random.lognormal(size=(n_recvs, n_recvs), sigma=std)
+        # micro
         path_loss = lognormal * \
-            pow(10., -(120.9 + 37.6*np.log10(distance_matrix))/10.)
+            pow(10., -(114.8 + 36.7*np.log10(distance_matrix))/10.)
+        # macro
+        # path_loss = lognormal * \
+        #     pow(10., -(103.56 + 20*np.log10(distance_matrix))/10.)
         self.path_loss = path_loss
 
     def __init__(self, n_levels, n_t_devices=9, m_r_devices=4, n_bs=1, m_usrs=4, **kwargs):
