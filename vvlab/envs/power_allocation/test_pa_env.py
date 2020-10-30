@@ -114,7 +114,7 @@ def test_cal_rate():
 
 
 def test_get_state():
-    env = PAEnv(n_levels=4, n_t_devices=2, m_r_devices=1, m_usrs=2)
+    env = PAEnv(n_levels=4, n_t_devices=4, m_r_devices=1, m_usrs=0)
     power = [0.01, 0.02, 0.03, 0.04]
     loss = np.array([
         [1.1e-1, 1.2e-3, 1.3e-2, 1.4e-2],
@@ -133,20 +133,21 @@ def test_get_state():
 
     # test value
     env.m_state = 2
+    print(env.get_state(rate, power, loss) )
     target_state = np.array(
-        [[1.09042222, 0.51457317, 0.75950816,
-          0.01, 0.03, 0.04,
+        [[0.01, 0.03, 0.04,
+          1.09042222, 0.51457317, 0.75950816,
           0.16115479, 0.1728366],
-         [1.86122244, 0.51457317, 0.75950816,
-          0.02, 0.03, 0.04,
+         [0.02, 0.03, 0.04,
+          1.86122244, 0.51457317, 0.75950816,
           0.14345279, 0.14937762],
-         [0.51457317, 1.86122244, 0.75950816,
-          0.03, 0.02, 0.04,
+         [0.03, 0.02, 0.04,
+          0.51457317, 1.86122244, 0.75950816,
           0.97797369, 1.02169507],
-         [0.75950816, 1.86122244, 0.51457317,
-          0.04, 0.02, 0.03,
+         [0.04, 0.02, 0.03,
+          0.75950816, 1.86122244, 0.51457317,
           0.96683314, 0.98351188]]
     )
-    tolerance = 1e-6 * np.ones((env.n_recvs, env.m_state * 3 + 2))
+    tolerance = 1e-6 * np.ones((env.n_recvs, env.n_states))
     assert (env.get_state(rate, power, loss) -
             target_state < tolerance).all()
