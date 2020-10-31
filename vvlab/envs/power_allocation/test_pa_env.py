@@ -162,21 +162,55 @@ def test_metrics():
     ])
     # test error
     try:
-        env = PAEnv(n_levels=4, n_t_devices=4, m_r_devices=1, m_usrs=0, metrics=["others"])
+        env = PAEnv(n_levels=4, n_t_devices=4, m_r_devices=1,
+                    m_usrs=0, metrics=["others"])
     except ValueError as e:
-        assert e.args[0] == 'm_state(8) cannot be greater than n_recvs(4)'
+        assert e.args[0] == "metrics should in power, rate and fading, but is ['others']"
 
     # test power
     # one test is enough, case total combine metrics is tested in test_state
-    env = PAEnv(n_levels=4, n_t_devices=4, m_r_devices=1, m_usrs=0, metrics=["power"])
+    env = PAEnv(n_levels=4, n_t_devices=4, m_r_devices=1,
+                m_usrs=0, metrics=["power"])
     rate = env.cal_rate(power, loss)
 
     env.m_state = 2
     target_state = np.array(
-        [[0.01, 0.03, 0.04,],
-         [0.02, 0.03, 0.04,],
-         [0.03, 0.02, 0.04,],
-         [0.04, 0.02, 0.03,]]
+        [[0.01, 0.03, 0.04, ],
+         [0.02, 0.03, 0.04, ],
+         [0.03, 0.02, 0.04, ],
+         [0.04, 0.02, 0.03, ]]
+    )
+    tolerance = 1e-6 * np.ones((env.n_recvs, env.n_states))
+    assert (env.get_state(rate, power, loss) -
+            target_state < tolerance).all()
+
+
+def test_order():
+    power = [0.01, 0.02, 0.03, 0.04]
+    loss = np.array([
+        [1.1e-1, 1.2e-3, 1.3e-2, 1.4e-2],
+        [2.1e-3, 2.2e-1, 2.3e-2, 2.4e-2],
+        [3.1e-2, 3.2e-2, 3.3e-2, 3.4e-2],
+        [4.1e-2, 4.2e-2, 4.3e-2, 4.4e-2],
+    ])
+    # test error
+    try:
+        env = PAEnv(n_levels=4, n_t_devices=4,
+                    m_r_devices=1, m_usrs=0, order="others")
+    except ValueError as e:
+        assert e.args[0] == 'order should in power, rate and fading, but is others'
+
+    # test power with power
+    env = PAEnv(n_levels=4, n_t_devices=4, m_r_devices=1,
+                m_usrs=0, order="fading", metrics=["power"])
+    rate = env.cal_rate(power, loss)
+
+    env.m_state = 2
+    target_state = np.array(
+        [[0.01, 0.03, 0.04, ],
+         [0.02, 0.03, 0.04, ],
+         [0.03, 0.02, 0.04, ],
+         [0.04, 0.02, 0.03, ]]
     )
     tolerance = 1e-6 * np.ones((env.n_recvs, env.n_states))
     assert (env.get_state(rate, power, loss) -
