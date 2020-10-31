@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2020-09-25 11:20
-@edit time: 2020-10-30 14:55
+@edit time: 2020-10-30 15:08
 @FilePath: /vvlab/vvlab/envs/power_allocation/pa_env.py
 @desc: 
 Created on Sat Sep 15 11:24:43 2018
@@ -211,7 +211,7 @@ class PAEnv:
         self.r_dev, self.r_bs, self.R_dev, self.R_bs = 0.001, 0.01, 0.1, 1
         self.Ns, self.n_levels = 50, n_levels
         self.min_power, self.max_power, self.thres_power = 5., 38., -114.  # dBm
-        self.bs_power = 10 # mW
+        self.bs_power = 10  # W
         self.m_state = 16
         self.__dict__.update(kwargs)
         # set random seed
