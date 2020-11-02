@@ -41,12 +41,13 @@ class ReplayBuffer:
             >>> batch = self.memory.get_batch_splited_tensor(CUDA, batch_size)
     """
 
-    def __init__(self, n_states, n_actions, buff_size=1000, buff_thres=0, batch_size=32):
+    def __init__(self, n_states, n_actions, buff_size=1000, buff_thres=0, batch_size=32, card_no=0):
         """初始化经验回放池"""
         # 参数复制与定义
         self.n_states, self.n_actions = n_states, n_actions
         self.buff_size, self.buff_thres = buff_size, buff_thres
         self.batch_size = batch_size
+        self.card_no = card_no
         # 初始化经验回放池
         buff_dim = n_states * 2 + n_actions + 2
         self.replay_pool = np.zeros((buff_size, buff_dim))
@@ -123,4 +124,4 @@ class ReplayBuffer:
         if batch is None:
             return batch
         else:
-            return (torch.from_numpy(ndarray).type(dtype).cuda() for ndarray in batch) if gpu else (torch.from_numpy(ndarray).type(dtype) for ndarray in batch)
+            return (torch.from_numpy(ndarray).type(dtype).cuda(self.card_no) for ndarray in batch) if gpu else (torch.from_numpy(ndarray).type(dtype) for ndarray in batch)
