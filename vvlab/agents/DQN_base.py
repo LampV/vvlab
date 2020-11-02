@@ -35,7 +35,7 @@ class DQNBase(object):
         self.n_states, self.n_actions = n_states, n_actions
         self._build_net()
 
-         self.buff_size, self.buff_thres, self.batch_size = 50000, 1000, 256
+        self.buff_size, self.buff_thres, self.batch_size = 50000, 1000, 256
         if 'buff_size' in kwargs:
             self.buff_size = kwargs['buff_size']
         if 'buff_thres' in kwargs:
