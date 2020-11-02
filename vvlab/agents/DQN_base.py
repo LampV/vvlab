@@ -45,7 +45,8 @@ class DQNBase(object):
         self.replay_buff = ReplayBuffer(n_states, 1, buff_size=self.buff_size,
                                         buff_thres=self.buff_thres, batch_size=self.batch_size, card_no=self.card_no)
         # 定义优化器和损失函数
-        self.optimizer = torch.optim.Adam(self.eval_net.parameters(), lr=learning_rate)
+        self.optimizer = torch.optim.Adam(
+            self.eval_net.parameters(), lr=learning_rate)
         self.loss_func = nn.MSELoss()
         # 记录步数用于同步参数
         self.eval_step = 0
@@ -57,7 +58,8 @@ class DQNBase(object):
 
     def get_action(self, state):
         # epsilon update
-        self.epsilon = self.epsilon * self.epsilon_decay if self.epsilon > self.epsilon_min else self.epsilon
+        self.epsilon = self.epsilon * \
+            self.epsilon_decay if self.epsilon > self.epsilon_min else self.epsilon
         # 将行向量转为列向量（1 x n_states -> n_states x 1 x 1)
         if np.random.rand() < self.epsilon:
             # 概率随机
@@ -80,7 +82,7 @@ class DQNBase(object):
     def learn(self):
         batch = self.replay_buff.get_batch_splited_tensor(CUDA)
         if batch is None:
-            return
+            return None
         # 参数复制
         if self.eval_step % self.eval_every == 0:
             self.target_net.load_state_dict(self.eval_net.state_dict())
@@ -91,9 +93,13 @@ class DQNBase(object):
         # 计算误差
         q_eval = self.eval_net(batch_cur_states)
         q_eval = q_eval.gather(1, batch_actions.long())  # shape (batch, 1)
-        q_next = self.target_net(batch_next_states).detach()     # detach from graph, don't backpropagate
+        # detach from graph, don't backpropagate
+        q_next = self.target_net(batch_next_states).detach()     
         # 如果done，则不考虑未来
-        q_target = batch_rewards + self.gamma * (1 - batch_dones) * q_next.max(1)[0].view(len(batch_next_states), 1)   # shape (batch, 1)
+        q_target = batch_rewards + self.gamma * \
+            (1 - batch_dones) * \
+                q_next.max(1)[0].view(
+                    len(batch_next_states), 1)   # shape (batch, 1)
         loss = self.loss_func(q_eval, q_target)
         # 网络更新
         self.optimizer.zero_grad()
