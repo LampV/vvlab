@@ -53,12 +53,13 @@ class DQNBase(object):
         # 将行向量转为列向量（1 x n_states -> n_states x 1 x 1)
         if np.random.rand() < self.epsilon:
             # 概率随机
-            return np.random.randint(self.n_actions)
+            action_size = state.shape[0]
+            return np.random.randint(0, self.n_actions, (1, action_size))
         else:
             # greedy
             state = torch.unsqueeze(torch.FloatTensor(state), 0)
             action_values = self.eval_net.forward(state).cpu()
-            return action_values.data.numpy().argmax()
+            return action_values.data.numpy().argmax(axis=len(action_values.shape)-1)
 
     def get_raw_out(self, state):
         state = torch.unsqueeze(torch.FloatTensor(state), 0)

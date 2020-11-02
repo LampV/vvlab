@@ -36,12 +36,12 @@ def rl_loop():
     # train
     for ep in range(MAX_EPISODES):
         cur_state = env.reset()
-        cur_state = cur_state.reshape((n_states))
+        cur_state = cur_state.reshape((-1,n_states))
         done = False
         while not done:
-            action = agent.get_action(cur_state)
+            action = agent.get_action(cur_state)[0]
             next_state, reward, done, info = env.step(action)
-            next_state = next_state.reshape((n_states))
+            next_state = next_state.reshape((-1,n_states))
             agent.add_step(cur_state, action, reward, done, next_state)
             loss = agent.learn()
             if loss:
