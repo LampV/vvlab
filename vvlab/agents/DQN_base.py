@@ -17,7 +17,7 @@ CUDA = torch.cuda.is_available()
 
 
 class DQNBase(object):
-    def __init__(self, n_states, n_actions, learning_rate=0.001, discount_rate=0.0, card_no=0):
+    def __init__(self, n_states, n_actions, learning_rate=0.001, discount_rate=0.0, card_no=0, **kwargs):
         """
         初始化DQN的两个网络和经验回放池
         @param n_obs: number of observations
@@ -35,7 +35,15 @@ class DQNBase(object):
         self.n_states, self.n_actions = n_states, n_actions
         self._build_net()
 
-        self.replay_buff = ReplayBuffer(n_states, 1, exp_size=200)
+         self.buff_size, self.buff_thres, self.batch_size = 50000, 1000, 256
+        if 'buff_size' in kwargs:
+            self.buff_size = kwargs['buff_size']
+        if 'buff_thres' in kwargs:
+            self.buff_thres = kwargs['buff_thres']
+        if 'batch_size' in kwargs:
+            self.batch_size = kwargs['batch_size']
+        self.replay_buff = ReplayBuffer(n_states, 1, buff_size=self.buff_size,
+                                        buff_thres=self.buff_thres, batch_size=self.batch_size, card_no=self.card_no)
         # 定义优化器和损失函数
         self.optimizer = torch.optim.Adam(self.eval_net.parameters(), lr=learning_rate)
         self.loss_func = nn.MSELoss()
