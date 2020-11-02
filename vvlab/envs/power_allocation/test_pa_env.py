@@ -24,6 +24,11 @@ devices = {
 }
 
 
+def equal(unit, target):
+    tolerance = 1e-6 * np.ones_like(target)
+    return (np.abs(unit - target) < tolerance).all()
+
+
 def test_init_power_level():
     """test transmit powers"""
     env = PAEnv(n_levels=4, min_power=10, max_power=30)
@@ -90,12 +95,11 @@ def test_init_path_loss():
         [
             [0.1, 1.1, 0.6, 0.6],
             [1.1, 0.1, 0.6, 0.6],
-            [np.sqrt(0.26), np.sqrt(0.6), 0.1, 0.1],
-            [np.sqrt(0.26), np.sqrt(0.6), 0.1, 0.1],
+            [np.sqrt(0.26), np.sqrt(0.26), 0.1, 0.1],
+            [np.sqrt(0.26), np.sqrt(0.26), 0.1, 0.1],
         ]
     )
-    tolerance = 1e-6 * np.ones((env.n_recvs, env.n_recvs))
-    assert (distance_matrix - target_dis < tolerance).all()
+    assert equal(distance_matrix, target_dis)
 
 
 def test_cal_rate():
@@ -109,8 +113,7 @@ def test_cal_rate():
         [1e-2, 1e-2, 1e-2, 1e-2],
     ])
     target_rate = np.array([0.58256799, 0.58256799, 0.87446912, 0.87446912])
-    tolerance = 1e-6 * np.ones((env.n_recvs, env.n_recvs))
-    assert (env.cal_rate(power, loss) - target_rate < tolerance).all()
+    assert equal(env.cal_rate(power, loss), target_rate)
 
 
 def test_get_state():
@@ -126,7 +129,7 @@ def test_get_state():
     # test error
     try:
         env.m_state = 8
-        state = env.get_state(rate, power, loss)
+        env.get_state(rate, power, loss)
     except Exception as e:
         assert e.__class__ == ValueError
         assert e.args[0] == 'm_state(8) cannot be greater than n_recvs(4)'
@@ -147,12 +150,18 @@ def test_get_state():
           0.75950816, 1.86122244, 0.51457317,
           0.96683314, 0.98351188]]
     )
-    tolerance = 1e-6 * np.ones((env.n_recvs, env.n_states))
-    assert (env.get_state(rate, power, loss) -
-            target_state < tolerance).all()
+    assert equal(env.get_state(rate, power, loss), target_state)
 
 
 def test_metrics():
+    # test error
+    try:
+        env = PAEnv(n_levels=4, n_t_devices=4, m_r_devices=1,
+                    m_usrs=0, metrics=["others"])
+    except ValueError as e:
+        assert e.args[0] == \
+            "metrics should in power, rate and fading, but is ['others']"
+
     power = [0.01, 0.02, 0.03, 0.04]
     loss = np.array([
         [1.1e-1, 1.2e-3, 1.3e-2, 1.4e-2],
@@ -160,29 +169,19 @@ def test_metrics():
         [3.1e-2, 3.2e-2, 3.3e-2, 3.4e-2],
         [4.1e-2, 4.2e-2, 4.3e-2, 4.4e-2],
     ])
-    # test error
-    try:
-        env = PAEnv(n_levels=4, n_t_devices=4, m_r_devices=1,
-                    m_usrs=0, metrics=["others"])
-    except ValueError as e:
-        assert e.args[0] == "metrics should in power, rate and fading, but is ['others']"
-
     # test power
     # one test is enough, case total combine metrics is tested in test_state
-    env = PAEnv(n_levels=4, n_t_devices=4, m_r_devices=1,
+    env = PAEnv(n_levels=4, n_t_devices=4, m_r_devices=1, m_state=2,
                 m_usrs=0, metrics=["power"])
     rate = env.cal_rate(power, loss)
 
-    env.m_state = 2
     target_state = np.array(
         [[0.01, 0.03, 0.04, ],
          [0.02, 0.03, 0.04, ],
          [0.03, 0.02, 0.04, ],
          [0.04, 0.02, 0.03, ]]
     )
-    tolerance = 1e-6 * np.ones((env.n_recvs, env.n_states))
-    assert (env.get_state(rate, power, loss) -
-            target_state < tolerance).all()
+    assert equal(env.get_state(rate, power, loss), target_state)
 
 
 def test_sorter():
@@ -201,17 +200,18 @@ def test_sorter():
         [3.1e-2, 3.2e-2, 3.3e-2, 3.4e-2],
         [4.1e-2, 4.2e-2, 4.3e-2, 4.4e-2],
     ])
-    env = PAEnv(n_levels=4, n_t_devices=4, m_r_devices=1,
+    env = PAEnv(n_levels=4, n_t_devices=4, m_r_devices=1, m_state=2,
                 m_usrs=0, sorter="power", metrics=["power"])
     rate = env.cal_rate(power, loss)
 
-    env.m_state = 2
     target_state = np.array(
         [[0.04, 0.02, 0.03, ],
          [0.03, 0.02, 0.04, ],
          [0.02, 0.03, 0.04, ],
          [0.01, 0.03, 0.04, ]]
     )
-    tolerance = 1e-6 * np.ones((env.n_recvs, env.n_states))
-    assert (env.get_state(rate, power, loss) -
-            target_state < tolerance).all()
+    assert equal(env.get_state(rate, power, loss), target_state)
+
+if __name__ == '__main__':
+    test_init_path_loss()
+    
