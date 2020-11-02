@@ -17,7 +17,7 @@ CUDA = torch.cuda.is_available()
 
 
 class DQNBase(object):
-    def __init__(self, n_states, n_actions, learning_rate=0.01, discount_rate=0.9):
+    def __init__(self, n_states, n_actions, learning_rate=0.001, discount_rate=0.0):
         """
         初始化DQN的两个网络和经验回放池
         @param n_obs: number of observations
@@ -26,9 +26,9 @@ class DQNBase(object):
         # DQN 的超参
         self.gamma = discount_rate  # 未来折扣率
 
-        self.epsilon = 0.9
-        self.epsilon_min = 0.01
-        self.epsilon_decay = 0.9
+        self.epsilon = 0.6
+        self.epsilon_min = 0.001
+        self.epsilon_decay = 0.999
         self.eval_every = 10
         # 网络创建
         self.n_states, self.n_actions = n_states, n_actions
