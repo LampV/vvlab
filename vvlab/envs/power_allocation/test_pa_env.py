@@ -226,6 +226,40 @@ def test_seed():
     usr = env.users[0]
     assert all((target_x == usr.x, target_y == usr.y))
 
+def test_action():
+    env = PAEnv(n_levels=10, seed=799345)
+    n_actions = env.n_actions
+    n_recvs = env.n_recvs
+    # normal
+    env.reset()
+    np.random.seed(799345)
+    action = np.random.randint(0, n_actions, (n_recvs, ))
+    s_, r, d, i = env.step(action)
+    assert r == 22.252017751938354
+    # only D2D actions is enough
+    env.reset()
+    np.random.seed(799345)
+    action = np.random.randint(0, n_actions, (n_recvs - env.m_usr, ))
+    s_, r, d, i = env.step(action)
+    assert r == 22.252017751938354
+    # other action dim raises error
+    env.reset()
+    np.random.seed(799345)
+    action = np.random.randint(0, n_actions, (n_recvs - env.m_usr - 1, ))
+    try:
+        s_, r, d, i = env.step(action)
+    except ValueError as e:
+        assert e.args[0] == f"length of power should be n_recvs({env.n_recvs})" \
+                f" or n_t*m_r({env.n_t*env.m_r}), but is {len(action)}"
+    # raw
+    env.reset()
+    np.random.seed(799345)
+    action = np.random.randint(0, n_actions, (n_recvs, ))
+    raw_power = env.power_levels[action]
+    s_, r, d, i = env.step(raw_power, raw=True)
+    assert r == 22.252017751938354
+
+
 
 def test_step():
     env = PAEnv(n_levels=10)
