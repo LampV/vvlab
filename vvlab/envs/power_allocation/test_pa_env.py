@@ -227,5 +227,13 @@ def test_seed():
     assert all((target_x == usr.x, target_y == usr.y))
 
 
-if __name__ == '__main__':
-    test_init_path_loss()
+def test_step():
+    env = PAEnv(n_levels=10)
+    n_actions, n_states = env.n_actions, env.n_states
+    assert n_actions == 10
+    assert n_states == 50
+    obs = env.reset()
+    action = env.sample()
+    env.step(action)
+    env.render()
+
