@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2020-09-25 11:20
-@edit time: 2020-11-03 11:31
+@edit time: 2020-11-03 11:40
 @FilePath: /vvlab/vvlab/envs/power_allocation/pa_env.py
 @desc: An enviornment for power allocation in d2d and BS het-nets.
 
@@ -103,7 +103,7 @@ class PAEnv:
             x, y = random_point(r_bs, R_bs)
             user = Node(x, y, 'user')
             self.users[i] = user
-        # TODO rename pair(of d2d) to cluster
+
         # init D2D positions
         self.devices = {}
         for t in range(self.n_t):
@@ -181,8 +181,8 @@ class PAEnv:
             """Calculate distances from other devices to given device."""
             losses = np.zeros(n_recvs)
             # d2d
-            for t_index, d2d_pair in self.devices.items():
-                t_device = d2d_pair['t_device']
+            for t_index, cluster in self.devices.items():
+                t_device = cluster['t_device']
                 delta_x, delta_y = t_device.x - node.x, t_device.y - node.y
                 distance = np.sqrt(delta_x**2 + delta_y**2)
                 losses[t_index*m_r: t_index*m_r+m_r] = distance
@@ -193,8 +193,8 @@ class PAEnv:
             return losses
 
         # 接收器和干扰项都先考虑d2d再考虑基站
-        for t_index, d2d_pair in self.devices.items():
-            r_devices = d2d_pair['r_devices']
+        for t_index, cluster in self.devices.items():
+            r_devices = cluster['r_devices']
             for r_index, r_device in r_devices.items():
                 distance_matrix[t_index * self.m_r +
                                 r_index] = get_distances(r_device)
@@ -396,8 +396,8 @@ class PAEnv:
 
         c_x = np.cos(angles_circle)
         c_y = np.sin(angles_circle)
-        for pair in self.devices.values():
-            t_d, r_ds = pair['t_device'], pair['r_devices']
+        for cluster in self.devices.values():
+            t_d, r_ds = cluster['t_device'], cluster['r_devices']
             tx = plt.scatter(t_d.x, t_d.y, marker='x', label='1', s=45)
             plt.plot(t_d.x + c_x, t_d.y + c_y, 'r')  # x**2 + y**2 = 9 的圆形
             for r_d in r_ds.values():
