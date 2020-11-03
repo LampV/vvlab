@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2020-09-25 11:20
-@edit time: 2020-11-03 10:33
+@edit time: 2020-11-03 11:31
 @FilePath: /vvlab/vvlab/envs/power_allocation/pa_env.py
 @desc: An enviornment for power allocation in d2d and BS het-nets.
 
@@ -89,32 +89,30 @@ class PAEnv:
         """
         r_bs, R_bs, r_dev, R_dev = self.r_bs, self.R_bs, self.r_dev, self.R_dev
 
-        # TODO abstract function of random a point inside a circle.
+        def random_point(min_r, radius, ox=0, oy=0):
+            # https://www.cnblogs.com/yunlambert/p/10161339.html
+            # renference the formulaic deduction, his code has bug at uniform
+            theta = np.random.random() * 2 * np.pi
+            r = np.random.uniform(min_r, radius**2)
+            x, y = np.cos(theta) * np.sqrt(r), np.sin(theta) * np.sqrt(r)
+            return ox + x, oy + y
         # init CUE positions
         self.station = Node(0, 0, 'station')
         self.users = {}
         for i in range(self.m_usr):
-            rho, phi = np.random.uniform(
-                r_bs, R_bs), np.random.uniform(-np.pi, np.pi)
-            x, y = rho * np.cos(phi), rho * np.sin(phi)
+            x, y = random_point(r_bs, R_bs)
             user = Node(x, y, 'user')
             self.users[i] = user
         # TODO rename pair(of d2d) to cluster
         # init D2D positions
         self.devices = {}
         for t in range(self.n_t):
-            rho, phi = np.random.uniform(
-                r_bs, R_bs - R_dev), np.random.uniform(-np.pi, np.pi)
-            x, y = rho * np.cos(phi), rho * np.sin(phi)
-            t_device = Node(x, y, 't_device')
-            r_devices = {}
-            for r in range(self.m_r):
-                d_rho, d_phi = np.random.uniform(
-                    r_dev, R_dev), np.random.uniform(-np.pi, np.pi)
-                d_x, d_y = d_rho * np.cos(d_phi), d_rho * np.sin(d_phi)
-                x, y = t_device.x + d_x, t_device.y + d_y
-                r_device = Node(x, y, 'r_device')
-                r_devices[r] = r_device
+            tx, ty = random_point(r_bs, R_bs - R_dev)
+            t_device = Node(tx, ty, 't_device')
+            r_devices = {
+                r: Node(*random_point(r_dev, R_dev, tx, ty), 'r_device')
+                for r in range(self.m_r)
+            }
             self.devices[t] = {'t_device': t_device, 'r_devices': r_devices}
 
     def init_jakes(self, fd=10, Ts=20e-3, Ns=50):
