@@ -106,30 +106,30 @@ def test_cal_rate():
     """test rate calc"""
     env = PAEnv(n_levels=4, n_t_devices=2, m_r_devices=1, m_usrs=2)
     power = [0.01, 0.01, 0.1, 0.1]
-    loss = np.array([
+    fading = np.array([
         [1e-1, 1e-3, 1e-2, 1e-2],
         [1e-3, 1e-1, 1e-2, 1e-2],
         [1e-2, 1e-2, 1e-2, 1e-2],
         [1e-2, 1e-2, 1e-2, 1e-2],
     ])
     target_rate = np.array([0.58256799, 0.58256799, 0.87446912, 0.87446912])
-    assert equal(env.cal_rate(power, loss), target_rate)
+    assert equal(env.cal_rate(power, fading), target_rate)
 
 
 def test_get_state():
     env = PAEnv(n_levels=4, n_t_devices=4, m_r_devices=1, m_usrs=0)
     power = [0.01, 0.02, 0.03, 0.04]
-    loss = np.array([
+    fading = np.array([
         [1.1e-1, 1.2e-3, 1.3e-2, 1.4e-2],
         [2.1e-3, 2.2e-1, 2.3e-2, 2.4e-2],
         [3.1e-2, 3.2e-2, 3.3e-2, 3.4e-2],
         [4.1e-2, 4.2e-2, 4.3e-2, 4.4e-2],
     ])
-    rate = env.cal_rate(power, loss)
+    rate = env.cal_rate(power, fading)
     # test error
     try:
         env.m_state = 8
-        env.get_state(rate, power, loss)
+        env.get_state(power, rate, fading)
     except Exception as e:
         assert e.__class__ == ValueError
         assert e.args[0] == 'm_state(8) cannot be greater than n_recvs(4)'
@@ -150,7 +150,7 @@ def test_get_state():
           0.75950816, 1.86122244, 0.51457317,
           0.96683314, 0.98351188]]
     )
-    assert equal(env.get_state(rate, power, loss), target_state)
+    assert equal(env.get_state(power, rate, fading), target_state)
 
 
 def test_metrics():
@@ -163,7 +163,7 @@ def test_metrics():
             "metrics should in power, rate and fading, but is ['others']"
 
     power = [0.01, 0.02, 0.03, 0.04]
-    loss = np.array([
+    fading = np.array([
         [1.1e-1, 1.2e-3, 1.3e-2, 1.4e-2],
         [2.1e-3, 2.2e-1, 2.3e-2, 2.4e-2],
         [3.1e-2, 3.2e-2, 3.3e-2, 3.4e-2],
@@ -173,7 +173,7 @@ def test_metrics():
     # one test is enough, case total combine metrics is tested in test_state
     env = PAEnv(n_levels=4, n_t_devices=4, m_r_devices=1, m_state=2,
                 m_usrs=0, metrics=["power"])
-    rate = env.cal_rate(power, loss)
+    rate = env.cal_rate(power, fading)
 
     target_state = np.array(
         [[0.01, 0.03, 0.04, ],
@@ -181,7 +181,7 @@ def test_metrics():
          [0.03, 0.02, 0.04, ],
          [0.04, 0.02, 0.03, ]]
     )
-    assert equal(env.get_state(rate, power, loss), target_state)
+    assert equal(env.get_state(power, rate, fading), target_state)
 
 
 def test_sorter():
@@ -194,7 +194,7 @@ def test_sorter():
 
     # test power with power
     power = [0.04, 0.03, 0.02, 0.01]
-    loss = np.array([
+    fading = np.array([
         [1.1e-1, 1.2e-3, 1.3e-2, 1.4e-2],
         [2.1e-3, 2.2e-1, 2.3e-2, 2.4e-2],
         [3.1e-2, 3.2e-2, 3.3e-2, 3.4e-2],
@@ -202,7 +202,7 @@ def test_sorter():
     ])
     env = PAEnv(n_levels=4, n_t_devices=4, m_r_devices=1, m_state=2,
                 m_usrs=0, sorter="power", metrics=["power"])
-    rate = env.cal_rate(power, loss)
+    rate = env.cal_rate(power, fading)
 
     target_state = np.array(
         [[0.04, 0.02, 0.03, ],
@@ -210,8 +210,8 @@ def test_sorter():
          [0.02, 0.03, 0.04, ],
          [0.01, 0.03, 0.04, ]]
     )
-    assert equal(env.get_state(rate, power, loss), target_state)
+    assert equal(env.get_state(power, rate, fading), target_state)
+
 
 if __name__ == '__main__':
     test_init_path_loss()
-    
