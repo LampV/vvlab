@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2020-09-25 11:20
-@edit time: 2020-11-03 11:42
+@edit time: 2020-11-03 11:43
 @FilePath: /vvlab/vvlab/envs/power_allocation/pa_env.py
 @desc: An enviornment for power allocation in d2d and BS het-nets.
 
@@ -227,12 +227,8 @@ class PAEnv:
         self.m_state = 16
         self.__dict__.update(kwargs)
         # set random seed
-        # TODO 使用 if-else
         if 'seed' in kwargs:
-            if kwargs['seed'] > 1:
-                seed = kwargs['seed']
-            else:
-                seed = 799345
+            seed = kwargs['seed'] if kwargs['seed'] > 1 else 799345
             np.random.seed(seed)
             print(f'PAEnv set random seed {seed}')
 
