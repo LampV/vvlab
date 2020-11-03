@@ -213,5 +213,19 @@ def test_sorter():
     assert equal(env.get_state(power, rate, fading), target_state)
 
 
+def test_seed():
+    env = PAEnv(n_levels=4, m_usrs=1, seed=123)
+    # this is func in PAEnv to random pos
+    def random_point(min_r, radius, ox=0, oy=0):
+        theta = np.random.random() * 2 * np.pi
+        r = np.random.uniform(min_r, radius**2)
+        x, y = np.cos(theta) * np.sqrt(r), np.sin(theta) * np.sqrt(r)
+        return ox + x, oy + y
+    np.random.seed(123)
+    target_x, target_y = random_point(env.r_bs, env.R_bs)
+    usr = env.users[0]
+    assert all((target_x == usr.x, target_y == usr.y))
+
+
 if __name__ == '__main__':
     test_init_path_loss()
