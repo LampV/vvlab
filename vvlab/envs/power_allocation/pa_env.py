@@ -3,38 +3,26 @@
 """
 @author: Jiawei Wu
 @create time: 2020-09-25 11:20
-@edit time: 2020-10-30 15:08
+@edit time: 2020-11-03 10:33
 @FilePath: /vvlab/vvlab/envs/power_allocation/pa_env.py
-@desc: 
-Created on Sat Sep 15 11:24:43 2018
-Q / gamma = 0
-minimum transmit power: 5dBm/ maximum: 38dBm
-bandwidth 10MHz
-AWGN power -114dBm
-path loss 120.9+37.6log10(d) (dB) d: transmitting distance (km)
-using interferers' set and therefore reducing the computation complexity
-multiple users / single BS
-FP algorithm, WMMSE algorithm, maximum power, random power allocation schemes as comparisons
+@desc: An enviornment for power allocation in d2d and BS het-nets.
+
+Path_loss is 114.8 + 36.7*np.log10(d), follow 3GPP TR 36.873, d is
+the transmitting distance, fc is 3.5GHz.
+Bandwith is 20MHz, AWGN power is -114dBm, respectively.
+Assume BS power is lower than 46 dBm(about 40 W).
+Assume minimum transmit power: 5dBm/ maximum: 38dBm, for d2d devices.
+FP algorithm, WMMSE algorithm, maximum power, random power allocation
+schemes as comparisons.
 downlink
 """
 import scipy.special
 import scipy.io
 import scipy
 import numpy as np
-from pprint import pprint
 from collections import namedtuple
-import os
 
-os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 Node = namedtuple('Node', 'x y type')
-
-
-memory_size = 50000
-INITIAL_EPSILON = 0.2
-FINAL_EPSILON = 0.0001
-learning_rate = 0.001
-train_interval = 10
-batch_size = 256
 
 
 class PAEnv:
@@ -81,15 +69,28 @@ class PAEnv:
         self.power_levels = np.array(powers)
 
     def init_pos(self):
-        """初始化用户和设备的位置
+        """ Initialize position of devices(DT, DR, BS and CUE).
 
-        随机基站的m个用户的位置；随机d2d设备的位置。其中：
-        用户位置均位于基站半径R_bs以内，且在基站保护半径r_bs以外；
-        传输设备均位于基站半径(R_bs - R_dev)以内
-        接收设备均位于传输设备半径(r_dev)以内
+        Establish a Cartesian coordinate system using the BS as an origin.
+
+        Celluar User Equipment(CUE) are all located within the radius R_bs
+        of the base station(typically, 1km) and outside the protected radius
+        r_bs(simulation paramter, typically 0.01km) of the BS.
+
+        The D2D transmission devices(DT) are located within the radius 
+        (R_bs - R_dev) of the BS, to ensure DRs all inside the radius R_bs.
+        Each DT has a cluster with sveral DRs, which is allocated within the
+        radius R_dev of DT. Futher more, DRs always appear outside the raduis
+        r_dev(typically 0.001km) of its DT.
+
+        All positions are sotred with the infomation of the corresponding
+        device in attributes of the environment instance, self.users and 
+        self.devices.
         """
         r_bs, R_bs, r_dev, R_dev = self.r_bs, self.R_bs, self.r_dev, self.R_dev
 
+        # TODO abstract function of random a point inside a circle.
+        # init CUE positions
         self.station = Node(0, 0, 'station')
         self.users = {}
         for i in range(self.m_usr):
@@ -98,6 +99,8 @@ class PAEnv:
             x, y = rho * np.cos(phi), rho * np.sin(phi)
             user = Node(x, y, 'user')
             self.users[i] = user
+        # TODO rename pair(of d2d) to cluster
+        # init D2D positions
         self.devices = {}
         for t in range(self.n_t):
             rho, phi = np.random.uniform(
@@ -115,24 +118,28 @@ class PAEnv:
             self.devices[t] = {'t_device': t_device, 'r_devices': r_devices}
 
     def init_jakes(self, fd=10, Ts=20e-3, Ns=50):
-        """初始化Jakes模型
+        """Initialize samples of Jakes model.
 
-        Jakes模型是用来仿真瑞利信道的方式，使用正弦波叠加法。
-        瑞利信道是快衰落模型，与距离无关（但是受到发送方和接收方位置影响）。
-        因此特定send到特定recv可能有多个信号，但是每个信号的衰落是一致的。
-        因为不考虑干扰阈值距离，所以衰落矩阵是一个n_recvs * n_recvs的矩阵。
+        Jakes model is a simulation of the rayleigh channel, which represents
+        the small-scale fading.
+
+        Each Rx corresponding to a (downlink) channel, each channel is a 
+        source of interference to other channels. Consdering the channel 
+        itself, we get a matrix representing the small-scale fading. Note that
+        the interference is decided on the position of Tx and Rx, so that the
+        m interferences make by m channels from the same Tx have the same 
+        fading ratio.
 
         Args:
-            fd: 多普勒频移, default 10
-            Ts:= 采样间隔, default 20e-3
-            Ns: 正弦波叠加数目, default 50
+            fd: Doppler frequency, default 10(Hz)
+            Ts: sampling period, default 20 * 1e-3(s)
+            Ns: number of samples, default 50
         """
-        # d2d发送端/每个发送端的接收端/基站数/每个基站的用户数
         n_t, m_r, n_bs, m_usr = self.n_t, self.m_r, 1, self.m_usr
         n_recvs = n_t * m_r + n_bs * m_usr
 
         def calc_h_set(pho):
-            # 使用Jakes模型计算其中一个正弦波的衰落
+            # calculate next sample of Jakes model.
             h_d2d = np.kron(np.sqrt((1.-pho**2)*0.5*(np.random.randn(n_recvs, n_t) **
                                                      2+np.random.randn(n_recvs, n_t)**2)),
                             np.ones((1, m_r), dtype=np.int32))
@@ -141,7 +148,7 @@ class PAEnv:
                            np.ones((1, m_usr), dtype=np.int32))
             h_set = np.concatenate((h_d2d, h_bs), axis=1)
             return h_set
-        # 迭代计算所有Ns组正弦波
+        # recurrence generate all Ns samples of Jakes.
         H_set = np.zeros([n_recvs, n_recvs, int(Ns)], dtype=np.float32)
         pho = np.float32(scipy.special.k0(2*np.pi*fd*Ts))
         H_set[:, :, 0] = calc_h_set(0)
@@ -151,21 +158,29 @@ class PAEnv:
         self.H_set = H_set
 
     def init_path_loss(self, slope=0):
-        """初始化路损
+        """Initialize paht loss( large-scale fading).
 
-        路径损耗，即慢衰落。采用LTE模型。
-        对于d2d接收器和基站用户而言，计算路损的方程是一致的。
-        只是因为所属集合不一致，需要单独计算后再拼接。
-        我们约定，考虑接收节点和发送节点的时候，都先考虑d2d，
-        再考虑基站/用户。其顺序和生成坐标时的顺序一致。
+        The large-scale fading is related to distance. An experimental 
+        formula can be used to modelling it by 3GPP TR 36.873, explained as:
+        L = 36.7log10(d) + 22.7 + 26log10(fc) - 0.3(hUT - 1.5).
+        When fc=3.5GHz and hUT=1.5m, the formula can be simplified to:
+        L = 114.8 + 36.7*log10(d) + 10*log10(z), 
+        where z is a lognormal random variable.
+
+        As with the small-scale fading, each the n Rxs have one siginal and
+        (n-1) interferences.  Using a n*n matrix to record the path loss, we
+        notice that the interference from one Tx has same large-scale fading,
+        Consistent with small-scale fading.
         """
-        # 计算距离矩阵
         n_t, m_r, n_bs, m_usr = self.n_t, self.m_r, self.n_bs, self.m_usr
         n_r_devices, n_recvs = n_t * m_r, n_t * m_r + n_bs * m_usr
+
+        # calculate distance matrix from initialized positions.
         distance_matrix = np.zeros((n_recvs, n_recvs))
+        # TODO losses重命名为distances
 
         def get_distances(node):
-            """给定接收节点，计算所有信号的路径衰落"""
+            """Calculate distances from other devices to given device."""
             losses = np.zeros(n_recvs)
             # d2d
             for t_index, d2d_pair in self.devices.items():
@@ -189,22 +204,21 @@ class PAEnv:
             distance_matrix[n_r_devices + u_index] = get_distances(user)
 
         self.distance_matrix = distance_matrix
-        # 最小距离
-        min_dis = np.concatenate((np.repeat(self.r_dev, n_r_devices),
-                                  np.repeat(self.r_bs, m_usr))) \
-            * np.ones((n_recvs, n_recvs))
+        # assign the minimum distance
+        min_dis = np.concatenate(
+            (np.repeat(self.r_dev, n_r_devices), np.repeat(self.r_bs, m_usr))
+        ) * np.ones((n_recvs, n_recvs))
         std = 8. + slope * (distance_matrix - min_dis)
+
+        # random initialize lognormal variable
         lognormal = np.random.lognormal(size=(n_recvs, n_recvs), sigma=std)
         # micro
         path_loss = lognormal * \
             pow(10., -(114.8 + 36.7*np.log10(distance_matrix))/10.)
-        # macro
-        # path_loss = lognormal * \
-        #     pow(10., -(103.56 + 20*np.log10(distance_matrix))/10.)
         self.path_loss = path_loss
 
     def __init__(self, n_levels, n_t_devices=9, m_r_devices=4, n_bs=1, m_usrs=4, **kwargs):
-        """初始化环境"""
+        """Initialize PA environment"""
         # set sttributes
         self.n_t, self.m_r, self.n_bs, self.m_usr = n_t_devices, m_r_devices, n_bs, m_usrs
         self.n_recvs = self.n_t * self.m_r + self.n_bs * self.m_usr
@@ -215,6 +229,7 @@ class PAEnv:
         self.m_state = 16
         self.__dict__.update(kwargs)
         # set random seed
+        # TODO 使用 if-else
         if 'seed' in kwargs:
             if kwargs['seed'] > 1:
                 seed = kwargs['seed']
@@ -242,7 +257,19 @@ class PAEnv:
         return sample_action
 
     def cal_rate(self, power, loss):
-        """计算速率"""
+        """Calculate channel rates.
+
+        The receive power equals to emitting power times channel gain.
+        The SINR can be calculated from all receive power. The channel rate
+        can be infered by Shannon's formula.
+
+        Args:
+            power: emitting power.
+            loss: channel gain infomation of current time slot.
+
+        Returns:
+            a vector of channel rate.
+        """
         noise_power = 1e-3*pow(10., self.thres_power/10.)
         maxC = 1000.
         recv_power = power * loss
@@ -257,18 +284,35 @@ class PAEnv:
         return rate
 
     def get_state(self, rate, power, loss):
-        """获取state
+        """Calculate and constitute the state.
 
-        每个接收端的state由一下三部分组成：
-        1. 接收端信号中功率最大的 C 项
-        2. 上个时隙的速率中对应这 C 个发送端的速率，以及自身速率
-        3. 上个时隙的功率中对应这 C 个发送端的功率，以及自身功率
-        其中 C 是用于控制 state 大小的可调参数，亦即 m_state
+        The state on each receiving end consists of the following components:
+        1. channel gain of the Rx, includes siginal and interferences
+        2. Tx emitting power of all channel
+        3. rate of all channel
+
+        The m_state channels (except itself) are selected by the sorter 
+        assigned when initializing the observation space, default the 
+        emitting power.
+        So there are m_state interferance channel gain, m_state Tx emitting
+        power and m_state channel rate. Notice that Tx emitting power and
+        channel rate should also include the infomation of this device.
+        Which parts of the metrics will consist the state is assigned when 
+        initializing the observation space.
+
+        Args:
+            rate: vector of channel rate of the last time slot.
+            power: vector of emitting power of the last time slot.
+            loss: matrix of all channel gain of the last time slot.
+        
+        Returns:
+            state consisted of assigned metrics ordered by assigned sorter.
         """
+        # TODO power rate fading 顺序调整，同时loss重命名为fading/gain
         n_t, m_r, n_bs, m_usr = self.n_t, self.m_r, self.n_bs, self.m_usr
         n_recvs = n_t * m_r + n_bs * m_usr
         m_state = self.m_state
-        # 检测m_state是否比n_recvs还大
+
         if m_state > n_recvs:
             raise ValueError(
                 f"m_state({m_state}) cannot be greater than n_recvs({n_recvs})")
@@ -318,7 +362,6 @@ class PAEnv:
         return state[:self.n_t * self.m_r]
 
     def step(self, action, raw=False):
-        """每个step采用一个叠加正弦波作为快衰减"""
         h_set = self.H_set[:, :, self.cur_step]
         self.loss = np.square(h_set) * self.path_loss
         if raw:
@@ -326,7 +369,7 @@ class PAEnv:
         else:
             power = self.power_levels[action]
 
-        # 增加BS功率项
+        # append power of BS(constant)
         if len(power) == self.n_t * self.m_r:
             power = np.concatenate((power, np.full(self.m_usr, self.bs_power)))
         elif len(power) == self.n_recvs:
