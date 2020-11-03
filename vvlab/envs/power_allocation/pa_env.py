@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2020-09-25 11:20
-@edit time: 2020-11-03 11:43
+@edit time: 2020-11-03 11:46
 @FilePath: /vvlab/vvlab/envs/power_allocation/pa_env.py
 @desc: An enviornment for power allocation in d2d and BS het-nets.
 
@@ -243,14 +243,14 @@ class PAEnv:
     def reset(self):
         self.cur_step = 0
         h_set = self.H_set[:, :, self.cur_step]
-        self.loss = np.square(h_set) * self.path_loss
+        self.fading = np.square(h_set) * self.path_loss
         return np.random.random((self.n_t * self.m_r, self.n_states))
 
     def sample(self):
         sample_action = np.random.randint(0, 10, self.n_t * self.m_r)
         return sample_action
 
-    def cal_rate(self, power, loss):
+    def cal_rate(self, power, fading):
         """Calculate channel rates.
 
         The receive power equals to emitting power times channel gain.
@@ -259,14 +259,14 @@ class PAEnv:
 
         Args:
             power: emitting power.
-            loss: channel gain infomation of current time slot.
+            fading: channel gain infomation of current time slot.
 
         Returns:
             a vector of channel rate.
         """
         noise_power = 1e-3*pow(10., self.thres_power/10.)
         maxC = 1000.
-        recv_power = power * loss
+        recv_power = power * fading
 
         signal_power = recv_power.diagonal()
         total_power = recv_power.sum(axis=1)
@@ -277,7 +277,7 @@ class PAEnv:
 
         return rate
 
-    def get_state(self, rate, power, loss):
+    def get_state(self, power, rate, fading):
         """Calculate and constitute the state.
 
         The state on each receiving end consists of the following components:
@@ -295,14 +295,13 @@ class PAEnv:
         initializing the observation space.
 
         Args:
-            rate: vector of channel rate of the last time slot.
             power: vector of emitting power of the last time slot.
-            loss: matrix of all channel gain of the last time slot.
+            rate: vector of channel rate of the last time slot.
+            fading: matrix of all channel gain of the last time slot.
         
         Returns:
             state consisted of assigned metrics ordered by assigned sorter.
         """
-        # TODO power rate fading 顺序调整，同时loss重命名为fading/gain
         n_t, m_r, n_bs, m_usr = self.n_t, self.m_r, self.n_bs, self.m_usr
         n_recvs = n_t * m_r + n_bs * m_usr
         m_state = self.m_state
@@ -319,20 +318,19 @@ class PAEnv:
         for i, _ in enumerate(power_last):
             power_last[i, 0], power_last[i, i] = power_last[i, i], \
                 power_last[i, 0]
-        ordered_loss = loss.copy()
-        for i, _ in enumerate(ordered_loss):
-            ordered_loss[i, 0], ordered_loss[i, i] = ordered_loss[i, i], \
-                ordered_loss[i, 0]
+        ordered_fading = fading.copy()
+        for i, _ in enumerate(ordered_fading):
+            ordered_fading[i, 0], ordered_fading[i, i] = ordered_fading[i, i], \
+                ordered_fading[i, 0]
 
-        sinr_norm_inv = ordered_loss[:, 1:] / \
-            np.tile(ordered_loss[:, 0:1], [1, n_recvs-1])
-        sinr_norm_inv = np.log(1. + sinr_norm_inv) / \
-            np.log(2)  # log representation
+        sinr_norm_fading = ordered_fading[:, 1:] / \
+            np.tile(ordered_fading[:, 0:1], [1, n_recvs-1])
+        sinr_norm_fading = np.log2(1. + sinr_norm_fading)
 
         sort_param = {
             'power': power_last[:, 1:],
             'rate': rate_last[:, 1:],
-            'fading': sinr_norm_inv
+            'fading': sinr_norm_fading
         }
 
         # sorter = sinr_norm_inv
@@ -345,11 +343,11 @@ class PAEnv:
             [rate_last[:, 0:1], rate_last[indices1, indices2+1]])
         power_last = np.hstack(
             [power_last[:, 0:1], power_last[indices1, indices2+1]])
-        sinr_norm_inv = sinr_norm_inv[indices1, indices2]
+        sinr_norm_fading = sinr_norm_fading[indices1, indices2]
         metric_param = {
             'power': power_last,
             'rate': rate_last,
-            'fading': sinr_norm_inv
+            'fading': sinr_norm_fading
         }
         state = np.hstack([metric_param[metric] for metric in self.metrics])
 
@@ -357,7 +355,7 @@ class PAEnv:
 
     def step(self, action, raw=False):
         h_set = self.H_set[:, :, self.cur_step]
-        self.loss = np.square(h_set) * self.path_loss
+        self.fading = np.square(h_set) * self.path_loss
         if raw:
             power = action
         else:
@@ -372,9 +370,9 @@ class PAEnv:
             msg = f"length of power should be n_recvs({self.n_recvs})" \
                 f" or n_t*m_r({self.n_t*self.m_r}), but is {len(power)}"
             raise ValueError(msg)
-        rate = self.cal_rate(power, self.loss)
+        rate = self.cal_rate(power, self.fading)
 
-        state = self.get_state(rate, power, self.loss)
+        state = self.get_state(power, rate, self.fading)
         reward = np.sum(rate)
         done = self.cur_step == self.Ns - 1
         info = self.cur_step
