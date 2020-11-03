@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2020-09-25 11:20
-@edit time: 2020-11-03 11:40
+@edit time: 2020-11-03 11:42
 @FilePath: /vvlab/vvlab/envs/power_allocation/pa_env.py
 @desc: An enviornment for power allocation in d2d and BS het-nets.
 
@@ -175,22 +175,21 @@ class PAEnv:
 
         # calculate distance matrix from initialized positions.
         distance_matrix = np.zeros((n_recvs, n_recvs))
-        # TODO losses重命名为distances
 
         def get_distances(node):
             """Calculate distances from other devices to given device."""
-            losses = np.zeros(n_recvs)
+            dis = np.zeros(n_recvs)
             # d2d
             for t_index, cluster in self.devices.items():
                 t_device = cluster['t_device']
                 delta_x, delta_y = t_device.x - node.x, t_device.y - node.y
                 distance = np.sqrt(delta_x**2 + delta_y**2)
-                losses[t_index*m_r: t_index*m_r+m_r] = distance
+                dis[t_index*m_r: t_index*m_r+m_r] = distance
             # bs
             delta_x, delta_y = self.station.x - node.x, self.station.y - node.y
             distance = np.sqrt(delta_x**2 + delta_y**2)
-            losses[n_r_devices:] = distance    # 已经有n_r_devices个信道了
-            return losses
+            dis[n_r_devices:] = distance    # 已经有n_r_devices个信道了
+            return dis
 
         # 接收器和干扰项都先考虑d2d再考虑基站
         for t_index, cluster in self.devices.items():
@@ -202,14 +201,15 @@ class PAEnv:
             distance_matrix[n_r_devices + u_index] = get_distances(user)
 
         self.distance_matrix = distance_matrix
+
         # assign the minimum distance
         min_dis = np.concatenate(
             (np.repeat(self.r_dev, n_r_devices), np.repeat(self.r_bs, m_usr))
         ) * np.ones((n_recvs, n_recvs))
         std = 8. + slope * (distance_matrix - min_dis)
-
         # random initialize lognormal variable
         lognormal = np.random.lognormal(size=(n_recvs, n_recvs), sigma=std)
+        
         # micro
         path_loss = lognormal * \
             pow(10., -(114.8 + 36.7*np.log10(distance_matrix))/10.)
