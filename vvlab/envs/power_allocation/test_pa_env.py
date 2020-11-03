@@ -52,8 +52,8 @@ def test_init_pos():
     )
 
     # test devices
-    for pair in env.devices.values():
-        t_device, r_devices = pair['t_device'], pair['r_devices']
+    for cluster in env.devices.values():
+        t_device, r_devices = cluster['t_device'], cluster['r_devices']
 
         assert env.r_bs <= dis(t_device, env.station) <= (
             env.R_bs - env.R_dev)
