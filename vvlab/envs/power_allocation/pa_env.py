@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2020-09-25 11:20
-@edit time: 2020-11-03 11:46
+@edit time: 2020-11-04 10:28
 @FilePath: /vvlab/vvlab/envs/power_allocation/pa_env.py
 @desc: An enviornment for power allocation in d2d and BS het-nets.
 
@@ -16,11 +16,13 @@ FP algorithm, WMMSE algorithm, maximum power, random power allocation
 schemes as comparisons.
 downlink
 """
-import scipy.special
-import scipy.io
-import scipy
-import numpy as np
 from collections import namedtuple
+
+import matplotlib.pyplot as plt
+import numpy as np
+import scipy
+import scipy.io
+import scipy.special
 
 Node = namedtuple('Node', 'x y type')
 
@@ -209,7 +211,7 @@ class PAEnv:
         std = 8. + slope * (distance_matrix - min_dis)
         # random initialize lognormal variable
         lognormal = np.random.lognormal(size=(n_recvs, n_recvs), sigma=std)
-        
+
         # micro
         path_loss = lognormal * \
             pow(10., -(114.8 + 36.7*np.log10(distance_matrix))/10.)
@@ -298,7 +300,7 @@ class PAEnv:
             power: vector of emitting power of the last time slot.
             rate: vector of channel rate of the last time slot.
             fading: matrix of all channel gain of the last time slot.
-        
+
         Returns:
             state consisted of assigned metrics ordered by assigned sorter.
         """
@@ -382,7 +384,6 @@ class PAEnv:
         return state, reward, done, info
 
     def render(self):
-        import matplotlib.pyplot as plt
 
         plt.close('all')
         plt.figure(1)
