@@ -3,6 +3,7 @@ from pa_env import (
     Node
 )
 import numpy as np
+from pathlib import Path
 
 users = {
     0: Node(0.1, 0, 'user'),
@@ -132,7 +133,8 @@ def test_get_state():
         env.get_state(power, rate, fading)
     except Exception as e:
         assert e.__class__ == ValueError
-        assert e.args[0] == 'm_state(8) cannot be greater than n_recvs(4)'
+        assert e.args[0] == 'm_state should be less than n_recvs(4)'\
+            ', but was 8'
 
     # test value
     env.m_state = 2
@@ -272,4 +274,6 @@ def test_step():
     env.reset()
     action = env.sample()
     env.step(action)
-    env.render()
+    fig: Path() = env.render()
+    if fig.exists():
+        fig.unlink()
