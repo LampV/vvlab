@@ -18,15 +18,18 @@ from torch.utils.tensorboard import SummaryWriter
 
 
 class DQN(DQNBase):
-    """
-    基于DQNBase创建的DQN类，通过附带的简单神经网络创建了 eval dqn network 和 target dqn network
+    """DQN class created based on DQNBase. 
+    
+    Create eval dqn network and target dqn network through the attached simple neural network.
     """
     def _build_net(self):
+        """Build a basic network."""
         self.eval_net = SimpleDQNNet(self.n_states, self.n_actions)
         self.target_net = SimpleDQNNet(self.n_states, self.n_actions)
 
 
 def rl_loop():
+    """DQN training process."""
     summary_writer = SummaryWriter()
     MAX_EPISODES = 100
     env = gym.make('Maze-v0')

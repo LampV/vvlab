@@ -14,31 +14,48 @@ from vvlab.agents import LinearBase
 
 
 class Sarsa(LinearBase):
-    """基于线性QTable创建的QLearning类"""
+    """Sarsa class created based on linear QTable."""
+
     def __init__(self, actions, learning_rate=0.01, reward_decay=0.9, e_greedy=0.9):
+        """Initialization of Sarsa class.
+
+        Args:
+          actions:Set of actions that can be taken.
+          learning_rate:Decide how much error this time is to be learned.
+          reward_decay:Attenuation value for future reward.
+          e_greedy:A parameter used in decision-making to determine the proportion of actions selected according to the QTable.
+        """
         super(Sarsa, self).__init__(actions, e_greedy, reward_decay, e_greedy)
         self.lr = learning_rate
         self.gamma = reward_decay
 
     def learn(self, s, a, r, d, s_, a_):
-        """
-        Q-Learning计算Q估计的时候使用Q'，所以还需要知道下一动作
+        """The process of updating the QTable.
+
+        Args:
+          s:State at this moment.
+          a:Action at this moment.
+          r:Reward after taking the action.
+          d:A sign to indicate whether training is stopped.
+          s_:State at next moment.
+          a_:Action at next moment. 
         """
         self.check_state_exist(s_)
         q_predict = self.q_table.loc[s, a]
         if not d:
-            q_target = r + self.gamma * self.q_table.loc[s_, a_]  # next state is not terminal
+            # next state is not terminal
+            q_target = r + self.gamma * self.q_table.loc[s_, a_]
         else:
             q_target = r  # next state is terminal
         self.q_table.loc[s, a] += self.lr * (q_target - q_predict)  # update
 
 
 def rl_loop(env, agent):
-    """
-    @description: 
-    @param env: 传入的环境对象
-    @param agent: 传入的智能体对象 
-    @return: 
+    """Sarsa training process.
+
+    Args:
+      env: The environment object.
+      agent: The training agent object.
     """
     for episode in range(10):
         # initial observation
@@ -55,7 +72,8 @@ def rl_loop(env, agent):
 
             # Sarsa
             next_action = agent.choose_action(str(next_state))
-            agent.learn(str(state), action, reward, done, str(next_state), next_action)
+            agent.learn(str(state), action, reward, done,
+                        str(next_state), next_action)
 
             # swap observation
             state = next_state
