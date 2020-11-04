@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2020-09-25 11:20
-@edit time: 2020-11-04 11:13
+@edit time: 2020-11-04 11:21
 @FilePath: /vvlab/vvlab/envs/power_allocation/pa_env.py
 @desc: An enviornment for power allocation in d2d and BS het-nets.
 
@@ -17,7 +17,9 @@ schemes as comparisons.
 downlink
 """
 from collections import namedtuple
+from pathlib import Path
 
+import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy
@@ -389,19 +391,42 @@ class PAEnv:
 
     def render(self):
 
-        plt.close('all')
-        plt.figure(1)
-        angles_circle = [i * np.pi / 180 for i in range(0, 360)]  # i先转换成double
+        def cir_edge(center, radius, color):
+            patch = mpatches.Circle(center, radius,
+                                    fc='white', ec=color, ls='--')
+            return patch
 
-        c_x = np.cos(angles_circle)
-        c_y = np.sin(angles_circle)
-        for cluster in self.devices.values():
-            t_d, r_ds = cluster['t_device'], cluster['r_devices']
-            plt.scatter(t_d.x, t_d.y, marker='x', label='1', s=45)
-            plt.plot(t_d.x + c_x, t_d.y + c_y, 'r')  # x**2 + y**2 = 9 的圆形
-            for r_d in r_ds.values():
-                plt.scatter(r_d.x, r_d.y, marker='o',
-                                 label='2', s=25, color='orange')
-        plt.xlim([-5, 5])
-        plt.ylim([-5, 5])
-        plt.show()
+        fig, ax = plt.subplots(figsize=(10, 10))
+        ax.set_xlim(-1.2, 1.2)
+        ax.set_ylim(-1.2, 1.2)
+
+        # draw d2d pairs
+        for t_idx, pair in self.devices.items():
+            t, rs = pair['t_device'], pair['r_devices']
+            # draw edge
+            ax.add_patch(cir_edge((t.x, t.y), self.R_dev, 'green'))
+            # draw t device
+            ax.scatter([t.x], [t.y], marker='s', s=100, c='green', zorder=10)
+            # draw r devices
+            for _, r in rs.items():
+                ax.scatter([r.x], [r.y], marker='o',
+                           s=60, c='green', zorder=10)
+
+        # draw cell and bs
+        cell_xs = self.R_bs * \
+            np.array([0, np.sqrt(3)/2, np.sqrt(3)/2,
+                      0, -np.sqrt(3)/2, -np.sqrt(3)/2, 0])
+        cell_ys = self.R_bs * np.array([1, .5, -.5, -1, -.5, .5, 1])
+        ax.plot(cell_xs, cell_ys, color='black')
+
+        ax.scatter([0.0], [0.0], marker='^', s=100, c='blue', zorder=30)
+        # draw usrs
+        for _, usr in self.users.items():
+            ax.scatter([usr.x], [usr.y], marker='x',
+                       s=100, c='orange', zorder=20)
+            ax.plot([0, usr.x], [0, usr.y], ls='--', c='blue', zorder=20)
+
+        save_path = Path('pa_env.png')
+        plt.savefig(save_path)
+        plt.close(fig)
+        return save_path
