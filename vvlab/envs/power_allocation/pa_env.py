@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2020-09-25 11:20
-@edit time: 2020-11-04 10:28
+@edit time: 2020-11-04 11:13
 @FilePath: /vvlab/vvlab/envs/power_allocation/pa_env.py
 @desc: An enviornment for power allocation in d2d and BS het-nets.
 
@@ -64,9 +64,9 @@ class PAEnv:
     def init_power_levels(self):
         min_power, max_power = self.min_power, self.max_power
         zero_power = 0
-        def cal_p(l): return 1e-3 * np.power(10, l / 10)
+        def cal_p(p_dbm): return 1e-3 * np.power(10, p_dbm / 10)
         dbm_powers = np.linspace(min_power, max_power, num=self.n_levels-1)
-        powers = [cal_p(l) for l in dbm_powers]
+        powers = [cal_p(p_dbm) for p_dbm in dbm_powers]
         powers = [zero_power] + powers
         self.power_levels = np.array(powers)
 
@@ -79,14 +79,14 @@ class PAEnv:
         of the base station(typically, 1km) and outside the protected radius
         r_bs(simulation paramter, typically 0.01km) of the BS.
 
-        The D2D transmission devices(DT) are located within the radius 
+        The D2D transmission devices(DT) are located within the radius
         (R_bs - R_dev) of the BS, to ensure DRs all inside the radius R_bs.
         Each DT has a cluster with sveral DRs, which is allocated within the
         radius R_dev of DT. Futher more, DRs always appear outside the raduis
         r_dev(typically 0.001km) of its DT.
 
         All positions are sotred with the infomation of the corresponding
-        device in attributes of the environment instance, self.users and 
+        device in attributes of the environment instance, self.users and
         self.devices.
         """
         r_bs, R_bs, r_dev, R_dev = self.r_bs, self.R_bs, self.r_dev, self.R_dev
@@ -123,11 +123,11 @@ class PAEnv:
         Jakes model is a simulation of the rayleigh channel, which represents
         the small-scale fading.
 
-        Each Rx corresponding to a (downlink) channel, each channel is a 
-        source of interference to other channels. Consdering the channel 
+        Each Rx corresponding to a (downlink) channel, each channel is a
+        source of interference to other channels. Consdering the channel
         itself, we get a matrix representing the small-scale fading. Note that
         the interference is decided on the position of Tx and Rx, so that the
-        m interferences make by m channels from the same Tx have the same 
+        m interferences make by m channels from the same Tx have the same
         fading ratio.
 
         Args:
@@ -137,15 +137,16 @@ class PAEnv:
         """
         n_t, m_r, n_bs, m_usr = self.n_t, self.m_r, 1, self.m_usr
         n_recvs = n_t * m_r + n_bs * m_usr
+        randn = np.random.randn
 
         def calc_h_set(pho):
             # calculate next sample of Jakes model.
-            h_d2d = np.kron(np.sqrt((1.-pho**2)*0.5*(np.random.randn(n_recvs, n_t) **
-                                                     2+np.random.randn(n_recvs, n_t)**2)),
-                            np.ones((1, m_r), dtype=np.int32))
-            h_bs = np.kron(np.sqrt((1.-pho**2)*0.5*(np.random.randn(n_recvs, n_bs)**2 +
-                                                    np.random.randn(n_recvs, n_bs)**2)),
-                           np.ones((1, m_usr), dtype=np.int32))
+            h_d2d = np.kron(np.sqrt((1.-pho**2)*0.5*(
+                randn(n_recvs, n_t)**2 + randn(n_recvs, n_t)**2)),
+                np.ones((1, m_r), dtype=np.int32))
+            h_bs = np.kron(np.sqrt((1.-pho**2)*0.5*(
+                randn(n_recvs, n_bs)**2 + randn(n_recvs, n_bs)**2)),
+                np.ones((1, m_usr), dtype=np.int32))
             h_set = np.concatenate((h_d2d, h_bs), axis=1)
             return h_set
         # recurrence generate all Ns samples of Jakes.
@@ -160,11 +161,11 @@ class PAEnv:
     def init_path_loss(self, slope=0):
         """Initialize paht loss( large-scale fading).
 
-        The large-scale fading is related to distance. An experimental 
+        The large-scale fading is related to distance. An experimental
         formula can be used to modelling it by 3GPP TR 36.873, explained as:
         L = 36.7log10(d) + 22.7 + 26log10(fc) - 0.3(hUT - 1.5).
         When fc=3.5GHz and hUT=1.5m, the formula can be simplified to:
-        L = 114.8 + 36.7*log10(d) + 10*log10(z), 
+        L = 114.8 + 36.7*log10(d) + 10*log10(z),
         where z is a lognormal random variable.
 
         As with the small-scale fading, each the n Rxs have one siginal and
@@ -217,14 +218,16 @@ class PAEnv:
             pow(10., -(114.8 + 36.7*np.log10(distance_matrix))/10.)
         self.path_loss = path_loss
 
-    def __init__(self, n_levels, n_t_devices=9, m_r_devices=4, n_bs=1, m_usrs=4, **kwargs):
+    def __init__(self, n_levels,
+                 n_t_devices=9, m_r_devices=4, n_bs=1, m_usrs=4, **kwargs):
         """Initialize PA environment"""
         # set sttributes
-        self.n_t, self.m_r, self.n_bs, self.m_usr = n_t_devices, m_r_devices, n_bs, m_usrs
+        self.n_t, self.m_r = n_t_devices, m_r_devices
+        self.n_bs, self.m_usr = n_bs, m_usrs
         self.n_recvs = self.n_t * self.m_r + self.n_bs * self.m_usr
         self.r_dev, self.r_bs, self.R_dev, self.R_bs = 0.001, 0.01, 0.1, 1
         self.Ns, self.n_levels = 50, n_levels
-        self.min_power, self.max_power, self.thres_power = 5., 38., -114.  # dBm
+        self.min_power, self.max_power, self.thres_power = 5, 38, -114  # dBm
         self.bs_power = 10  # W
         self.m_state = 16
         self.__dict__.update(kwargs)
@@ -287,13 +290,13 @@ class PAEnv:
         2. Tx emitting power of all channel
         3. rate of all channel
 
-        The m_state channels (except itself) are selected by the sorter 
-        assigned when initializing the observation space, default the 
+        The m_state channels (except itself) are selected by the sorter
+        assigned when initializing the observation space, default the
         emitting power.
         So there are m_state interferance channel gain, m_state Tx emitting
         power and m_state channel rate. Notice that Tx emitting power and
         channel rate should also include the infomation of this device.
-        Which parts of the metrics will consist the state is assigned when 
+        Which parts of the metrics will consist the state is assigned when
         initializing the observation space.
 
         Args:
@@ -309,8 +312,9 @@ class PAEnv:
         m_state = self.m_state
 
         if m_state > n_recvs:
-            raise ValueError(
-                f"m_state({m_state}) cannot be greater than n_recvs({n_recvs})")
+            msg = f"m_state should be less than n_recvs({n_recvs})" \
+                f", but was {m_state}"
+            raise ValueError(msg)
 
         # 将信号项提前
         rate_last = rate * np.ones([n_recvs, n_recvs])
@@ -322,8 +326,8 @@ class PAEnv:
                 power_last[i, 0]
         ordered_fading = fading.copy()
         for i, _ in enumerate(ordered_fading):
-            ordered_fading[i, 0], ordered_fading[i, i] = ordered_fading[i, i], \
-                ordered_fading[i, 0]
+            ordered_fading[i, 0], ordered_fading[i, i] = \
+                ordered_fading[i, i], ordered_fading[i, 0]
 
         sinr_norm_fading = ordered_fading[:, 1:] / \
             np.tile(ordered_fading[:, 0:1], [1, n_recvs-1])
@@ -393,10 +397,10 @@ class PAEnv:
         c_y = np.sin(angles_circle)
         for cluster in self.devices.values():
             t_d, r_ds = cluster['t_device'], cluster['r_devices']
-            tx = plt.scatter(t_d.x, t_d.y, marker='x', label='1', s=45)
+            plt.scatter(t_d.x, t_d.y, marker='x', label='1', s=45)
             plt.plot(t_d.x + c_x, t_d.y + c_y, 'r')  # x**2 + y**2 = 9 的圆形
             for r_d in r_ds.values():
-                rx = plt.scatter(r_d.x, r_d.y, marker='o',
+                plt.scatter(r_d.x, r_d.y, marker='o',
                                  label='2', s=25, color='orange')
         plt.xlim([-5, 5])
         plt.ylim([-5, 5])
