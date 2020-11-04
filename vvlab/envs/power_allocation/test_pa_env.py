@@ -190,7 +190,8 @@ def test_sorter():
         env = PAEnv(n_levels=4, n_t_devices=4,
                     m_r_devices=1, m_usrs=0, sorter="others")
     except ValueError as e:
-        assert e.args[0] == 'sorter should in power, rate and fading, but is others'
+        assert e.args[0] == 'sorter should in power, rate'\
+            ' and fading, but is others'
 
     # test power with power
     power = [0.04, 0.03, 0.02, 0.01]
@@ -216,6 +217,7 @@ def test_sorter():
 def test_seed():
     env = PAEnv(n_levels=4, m_usrs=1, seed=123)
     # this is func in PAEnv to random pos
+
     def random_point(min_r, radius, ox=0, oy=0):
         theta = np.random.random() * 2 * np.pi
         r = np.random.uniform(min_r, radius**2)
@@ -225,6 +227,7 @@ def test_seed():
     target_x, target_y = random_point(env.r_bs, env.R_bs)
     usr = env.users[0]
     assert all((target_x == usr.x, target_y == usr.y))
+
 
 def test_action():
     env = PAEnv(n_levels=10, seed=799345)
@@ -249,8 +252,9 @@ def test_action():
     try:
         s_, r, d, i = env.step(action)
     except ValueError as e:
-        assert e.args[0] == f"length of power should be n_recvs({env.n_recvs})" \
-                f" or n_t*m_r({env.n_t*env.m_r}), but is {len(action)}"
+        msg = f"length of power should be n_recvs({env.n_recvs})" \
+            f" or n_t*m_r({env.n_t*env.m_r}), but is {len(action)}"
+        assert e.args[0] == msg
     # raw
     env.reset()
     np.random.seed(799345)
@@ -260,14 +264,12 @@ def test_action():
     assert r == 22.252017751938354
 
 
-
 def test_step():
     env = PAEnv(n_levels=10)
     n_actions, n_states = env.n_actions, env.n_states
     assert n_actions == 10
     assert n_states == 50
-    obs = env.reset()
+    env.reset()
     action = env.sample()
     env.step(action)
     env.render()
-
