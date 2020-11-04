@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2019-11-25 11:08
-@edit time: 2020-09-25 16:43
+@edit time: 2020-11-04 11:31
 @FilePath: /vvlab/setup.py
 """
 
@@ -24,7 +24,7 @@ URL = 'https://github.com/LampV/Reinforcement-Learning'
 EMAIL = '13260322877@163.com'
 AUTHOR = 'Jiawei Wu','Yuqian Song'
 REQUIRES_PYTHON = '>=3.6.0'
-VERSION = '0.2.2'
+VERSION = '0.2.3'
 
 # What packages are required for this module to be executed?
 REQUIRED = [

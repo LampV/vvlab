@@ -3,12 +3,12 @@
 """
 @author: Jiawei Wu
 @create time: 2020-03-18 11:52
-@edit time: 2020-09-25 16:42
+@edit time: 2020-11-04 11:30
 @FilePath: /vvlab/vvlab/__version__.py
 """
 
 
 
-VERSION = (0, 2, 2)
+VERSION = (0, 2, 3)
 
 __version__ = '.'.join(map(str, VERSION))
