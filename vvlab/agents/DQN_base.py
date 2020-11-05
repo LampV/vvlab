@@ -17,21 +17,28 @@ CUDA = torch.cuda.is_available()
 
 
 class DQNBase(object):
+    """The base class for DQN."""
+
     def __init__(self, n_states, n_actions, learning_rate=0.001, discount_rate=0.0, card_no=0, **kwargs):
+        """Initialize two networks and experience playback pool of DQN.
+
+        Args:
+          n_states: Number of states.
+          n_actions: Number of actions.
+          learning_rate: Decide how much error this time is to be learned.
+          discount_rate: Attenuation value for future reward.
+          card_no: Designated training card number.
+          **kwargs: Incoming parameters.
         """
-        初始化DQN的两个网络和经验回放池
-        @param n_obs: number of observations
-        @param n_actions: number of actions
-        """
-        # DQN 的超参
-        self.gamma = discount_rate  # 未来折扣率
+        # super parameters of DQN
+        self.gamma = discount_rate  # future discount rate
 
         self.epsilon = 0.6
         self.epsilon_min = 0.001
         self.epsilon_decay = 0.999
         self.eval_every = 10
         self.card_no = card_no
-        # 网络创建
+        # bulid the network
         self.n_states, self.n_actions = n_states, n_actions
         self._build_net()
 
@@ -44,25 +51,38 @@ class DQNBase(object):
             self.batch_size = kwargs['batch_size']
         self.replay_buff = ReplayBuffer(n_states, 1, buff_size=self.buff_size,
                                         buff_thres=self.buff_thres, batch_size=self.batch_size, card_no=self.card_no)
-        # 定义优化器和损失函数
+        # define optimizer and loss function
         self.optimizer = torch.optim.Adam(
             self.eval_net.parameters(), lr=learning_rate)
         self.loss_func = nn.MSELoss()
-        # 记录步数用于同步参数
+        # record the number of steps for synchronization parameters
         self.eval_step = 0
         if CUDA:
             self.cuda()
 
     def _build_net(self):
+        """Bulid the network.
+
+        Raises:
+          TypeError:Network build no implementation.
+        """
         raise TypeError("Network build no implementation")
 
     def get_action(self, state):
+        """Get the action at this moment.
+
+        Args:
+          state:State at this moment.
+
+        Return:
+          The action output selected under the random or epsilon-greedy strategy according to the random number.
+        """
         # epsilon update
         self.epsilon = self.epsilon * \
             self.epsilon_decay if self.epsilon > self.epsilon_min else self.epsilon
-        # 将行向量转为列向量（1 x n_states -> n_states x 1 x 1)
+        # convert row vector to column vector (1 x n_states -> n_states x 1 x 1)
         if np.random.rand() < self.epsilon:
-            # 概率随机
+            # random
             action_size = state.shape[0]
             return np.random.randint(0, self.n_actions, (1, action_size))
         else:
@@ -72,41 +92,64 @@ class DQNBase(object):
             return action_values.data.numpy().argmax(axis=len(action_values.shape)-1)
 
     def get_raw_out(self, state):
+        """Get the original actions.
+
+        Args:
+          state:State at this moment.
+
+        Returns:
+          Action values before selected by argmax under epsilon-greedy strategy.
+        """
         state = torch.unsqueeze(torch.FloatTensor(state), 0)
         action_values = self.eval_net.forward(state)
         return action_values
 
     def add_step(self, cur_state, action, reward, done, next_state):
+        """Add a record to the experience replay pool.
+
+        Args:
+          cur_state:State at this moment.
+          action:Action output at this moment.
+          reward:Reward after taking the action.
+          done:A sign to indicate whether training is stopped.
+          next_state:State at next moment.
+        """
         self.replay_buff.add_step(cur_state, action, reward, done, next_state)
 
     def learn(self):
+        """The learning process of DQN.
+
+        Returns:
+          The loss during learning process when the batch is not 0.
+        """
         batch = self.replay_buff.get_batch_splited_tensor(CUDA)
         if batch is None:
             return None
-        # 参数复制
+        # parameter copy
         if self.eval_step % self.eval_every == 0:
             self.target_net.load_state_dict(self.eval_net.state_dict())
-        # 更新训练步数
+        # update training steps
         self.eval_step += 1
-        # 拆分batch
+        # split batch
         batch_cur_states, batch_actions, batch_rewards, batch_dones, batch_next_states = batch
-        # 计算误差
+        # calculation error
         q_eval = self.eval_net(batch_cur_states)
         q_eval = q_eval.gather(1, batch_actions.long())  # shape (batch, 1)
         # detach from graph, don't backpropagate
-        q_next = self.target_net(batch_next_states).detach()     
-        # 如果done，则不考虑未来
+        q_next = self.target_net(batch_next_states).detach()
+        # if done, the future is not considered
         q_target = batch_rewards + self.gamma * \
             (1 - batch_dones) * \
-                q_next.max(1)[0].view(
-                    len(batch_next_states), 1)   # shape (batch, 1)
+            q_next.max(1)[0].view(
+                len(batch_next_states), 1)   # shape (batch, 1)
         loss = self.loss_func(q_eval, q_target)
-        # 网络更新
+        # update network
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
         return loss.detach().cpu().numpy()
 
     def cuda(self):
+        """GPU operation using specified card."""
         self.eval_net.cuda(self.card_no)
         self.target_net.cuda(self.card_no)

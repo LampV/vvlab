@@ -22,9 +22,9 @@ class DDPG(DDPGBase):
     def _param_override(self):
         """Provide a method for subclass to simply override the parameters of the baseclass.
 
-        When "summary" is set to true, 
-        it provides the possibility to obtain the file save path from the parameter 
-        and specifies the data required for visualization. 
+        When "summary" is set to true,
+        it provides the possibility to obtain the file save path from the parameter
+        and specifies the data required for visualization.
         """
         self.summary = True
         self.mem_size = 0
@@ -64,7 +64,7 @@ class DDPG(DDPGBase):
 
     def add_step(self, s, a, r, d, s_):
         """Add a record to the memory pool.
-        
+
         Args:
           s:State at this moment.
           a:Action output at this moment.

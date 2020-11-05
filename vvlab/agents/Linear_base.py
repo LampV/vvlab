@@ -12,15 +12,16 @@ import pandas as pd
 
 
 class LinearBase:
-    """线性学习（QLearning、Sarsa及变形）的基类"""
+    """The base class for linear learning (QLearning, Sarsa and deformation)."""
 
     def __init__(self, actions: list, e_greedy: float, learning_rate, reward_decay):
-        """
-        初始化基类
-        @param actions: 动作空间（注：规定动作都是非负整数）
-        @param e_greedy: 选取最大价值动作的概率epsilon-greedy初始值
-        @param learning_rate: 学习率
-        @param reward_decay: 未来折扣率
+        """Initialize the base class.
+
+        Args:
+          actions: Set of actions that can be taken.(Note: The prescribed actions are all non-negative integers.)
+          e_greedy: Initial value of epsilon-greedy,the probability of selecting the most valuable action.
+          learning_rate: Decide how much error this time is to be learned.
+          reward_decay: Attenuation value for future reward.
         """
         self.actions = actions  # a list
         self.epsilon = e_greedy
@@ -29,33 +30,43 @@ class LinearBase:
         self.gamma = reward_decay
 
     def choose_action(self, observation, epsilon=None):
+        """Get the action corresponding to the current state. 
+
+        Select the value of the largest value from the Q table according to the probability of epsilon, 
+        and randomly select the rest.
+
+        Args:
+          observation: State at this moment.
+          epsilon: The epsilon value, if this value is not passed, it will be random according to the default value set at the beginning.
+
+        Returns:
+          Action at this moment.
         """
-        获取当前状态对应的动作。按照epsilon的概率从Q表读取价值最大的，剩下情况随机选取。
-        @param observation: 当前状态
-        @param epsilon: epsilon值，如果没有传递这个值，则按照开始设置的默认值随机。
-        """
-        # 确保epsilon被设置
+        # make sure epsilon is set
         if not epsilon:
             epsilon = self.epsilon
-        # 检测当前状态是否存在（若不存在会被初始化）
+        # check whether the current state exists (it will be initialized if it does not exist)
         self.check_state_exist(observation)
 
-        # 选取动作
+        # select action
         if np.random.uniform() < epsilon:
-            # 获取当前state对应的QTable行
+            # get the QTable row corresponding to the current state
             state_actions = self.q_table.loc[observation, :]
-            # 在所有value最大的index中随机选取
-            action = np.random.choice(state_actions[state_actions == np.max(state_actions)].index)
+            # randomly select from all indexes with the largest value
+            action = np.random.choice(
+                state_actions[state_actions == np.max(state_actions)].index)
         else:
-            # 随机选择
+            # random selection
             action = np.random.choice(self.actions)
         return action
 
     def check_state_exist(self, state):
-        """
-        检测状态是否存在，如果不存在则添加到QTable的行，并初始化为全0
-            :param self: 
-            :param state: 
+        """Check whether the status exists. 
+
+        If it does not exist, add it to the row of QTable and initialize it to all 0s.
+
+        Args:
+          state:State. 
         """
         if state not in self.q_table.index:
             # append new state to q table
@@ -68,6 +79,6 @@ class LinearBase:
             )
 
     def print_table(self):
-        """打印QTable内容"""
+        """Print QTable content."""
         q_table = self.q_table
         print(q_table)

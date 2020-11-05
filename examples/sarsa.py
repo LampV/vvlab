@@ -9,7 +9,6 @@
 
 import time
 import gym
-import vvlab
 from vvlab.agents import LinearBase
 
 
@@ -38,7 +37,7 @@ class Sarsa(LinearBase):
           r:Reward after taking the action.
           d:A sign to indicate whether training is stopped.
           s_:State at next moment.
-          a_:Action at next moment. 
+          a_:Action at next moment.
         """
         self.check_state_exist(s_)
         q_predict = self.q_table.loc[s, a]

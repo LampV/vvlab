@@ -18,11 +18,30 @@ import warnings
 
 
 class DDPGBase(object):
+    """The base class for DDPG."""
+
     def __init__(self, n_states, n_actions, action_bound=1, buff_size=1000, buff_thres=0, batch_size=32,
                  lr_a=0.001, lr_c=0.002, tau=0.01, gamma=0.9,
                  summary=False, *args, **kwargs):
-        # 兼容参数
-        # TODO 在0.3.0删除参数兼容
+         """Initialize the base class.
+
+         Args:
+           n_states:Number of states.
+           n_actions:Number of actions.
+           action_bound:Limit the changes of actions.
+           buff_size:Size of experience replay pool.
+           buff_thres:The minimum number of experience replay pool outputs.
+           batch_size:The size of a batch.
+           lr_a:Learning rate of actor.
+           lr_c:Learning rate of critic.
+           tau:Soft update factor.
+           gamma:When evaluating an action, the weight of the value of the next action.
+           summary:To decide whether provide the possibility to obtain the file save path from the parameter.
+           *args:Pack the parameters into tuples and call the function body.
+           **kwargs:Pack the parameters into dicts and call the function body.
+         """
+        # compatible parameters
+        # TODO remove parameter compatibility in 0.3.0
         if 'bound' in kwargs:
             warnings.warn("'bound' is deprecated and will remove after 0.3.0. "
                           "Use 'action_bound' instead.",
@@ -42,57 +61,67 @@ class DDPGBase(object):
             buff_thres = kwargs['exp_thres']
             self.exp_thres = buff_thres
 
-        # 参数复制
+        # copy parameters
         self.n_states, self.n_actions, self.action_bound = n_states, n_actions, action_bound
         self.buff_size, self.buff_thres, self.batch_size = buff_size, buff_thres, batch_size
         self.lr_a, self.lr_c, self.tau, self.gamma = lr_a, lr_c, tau, gamma
         self.summary = summary
         self.kwargs = kwargs
 
-        # 初始化episode和step
+        # initialize episode and step
         self.episode, self.step = 0, 0
-        # 参数覆盖
+        # parameter override
         self._param_override()
 
-        # 创建经验回放池
+        # create experience replay pool
         self.buff = ReplayBuffer(self.n_states, self.n_actions, buff_size=self.buff_size, buff_thres=self.buff_thres)
 
-        # 创建神经网络
+        # bulid neural networks
         self._build_net()
-        # 指定优化器
+        # specify optimizer
         self.actor_optim = torch.optim.Adam(self.actor_eval.parameters(), lr=self.lr_a)
         self.critic_optim = torch.optim.Adam(self.critic_eval.parameters(), lr=self.lr_c)
-        # 约定损失函数
+        # specify loss function
         self.mse_loss = nn.MSELoss()
 
-        # 指定噪声发生器
+        # specify noise generator
         self._build_noise()
 
-        # 指定summary writer
+        # specify summary writer
         self._build_summary_writer()
 
-        # 开启cuda
+        # start cuda
         if CUDA:
             self.cuda()
 
     def _param_override(self):
-        """覆盖参数
-        提供子类简单覆写基类参数的方法
-        例如：修改summary是否开启
-        应当谨慎使用这个方法
+        """Provide a method for subclass to simply override the parameters of the baseclass.
+       
+        For example: modify whether summary is enabled.This method should be used with caution.
         """
         pass
 
     def _build_net(self):
+        """Build network.
+
+        Raises:
+          TypeError:网络构建函数未被实现
+        """
         raise TypeError("网络构建函数未被实现")
 
     def _build_noise(self, *args):
+        """Build noise generator.
+
+        Raises:
+          TypeError:噪声发生器构建函数未被实现
+        """
         raise TypeError("噪声发生器构建函数未被实现")
 
     def _build_summary_writer(self):
-        """构建summary_writer
-        如果指定了不需要summary_writer，会将其置为None
-        如果指定了保存路径就使用保存路径，否则使用默认路径
+        """Build summary writer.
+
+        When "summary" is set to true, if no summary writer is specified, it will be set to None,
+        if the save path is specified, use the save path, otherwise use the default path.
         """
         if self.summary:
             if 'summary_path' in self.kwargs:
@@ -104,21 +133,39 @@ class DDPGBase(object):
             self.summary_writer = None
 
     def get_summary_writer(self):
+        """Get summary writer."""
         return self.summary_writer
 
     def _get_action(self, s):
-        """给定当前状态，获取选择的动作"""
+        """Get the selected action under current state.
+        
+        Args:
+          s:Given state.
+        
+        Returns:
+          The selected action.
+        """
         s = torch.unsqueeze(torch.FloatTensor(s), 0)
         action = self.actor_eval.forward(s).detach().cpu().numpy()
         return action
 
     def get_action(self, s):
+        """Get the selected action under given state.
+        
+        Args:
+          s:Given state.
+        
+        Returns:
+          The selected action.
+        """
         return self._get_action(s)
 
     def _save(self, save_path, append_dict={}):
-        """保存当前模型的网络参数
-        @param save_path: 模型的保存位置
-        @param append_dict: 除了网络模型之外需要保存的内容
+        """Save the network parameters of the current model.
+
+        Args:
+          save_path: The save path of the model.
+          append_dict: What needs to be saved in addition to the network model.
         """
         states = {
             'actor_eval_net': self.actor_eval.state_dict(),
@@ -130,9 +177,11 @@ class DDPGBase(object):
         torch.save(states, save_path)
 
     def save(self, episode=None, save_path='./cur_model.pth'):
-        """保存的默认实现
-        @param episode: 当前的episode
-        @param save_path: 模型的保存位置，默认是'./cur_model.pth'
+        """The saved default implementation.
+
+        Args:
+          episode: Current episode.
+          save_path: The save path of the model，default is'./cur_model.pth'.
         """
         append_dict = {
             'episode': self.episode if episode is None else episode,
@@ -141,30 +190,38 @@ class DDPGBase(object):
         self._save(save_path, append_dict)
 
     def _load(self, save_path):
-        """加载模型参数
-        @param save_path: 模型的保存位置
-        @return: 加载得到的模型字典
+        """Load the model parameter.
+
+        Args:
+          save_path: The save path of the model.
+        
+        Returns:
+          The loaded model dictionary.
         """
         if CUDA:
             states = torch.load(save_path, map_location=torch.device('cuda'))
         else:
             states = torch.load(save_path, map_location=torch.device('cpu'))
 
-        # 从模型中加载网络参数
+        # load network parameters from the model
         self.actor_eval.load_state_dict(states['actor_eval_net'])
         self.actor_target.load_state_dict(states['actor_target_net'])
         self.critic_eval.load_state_dict(states['critic_eval_net'])
         self.critic_target.load_state_dict(states['critic_target_net'])
 
-        # 从模型中加载episode和step信息
+        # load episode and step information from the model
         self.episode, self.step = states['episode'], states['step']
-        # 返回states
+        # return states
         return states
 
     def load(self, save_path='./cur_model.pth'):
-        """加载模型的默认实现
-        @param save_path: 模型的保存位置, 默认是 './cur_model.pth'
-        @return: 被记录的episode值
+        """The default implementation of the loaded model.
+
+        Args:
+          save_path: The save path of the model，default is'./cur_model.pth'.
+        
+        Returns: 
+          Recorded episode value.
         """
         print('\033[1;31;40m{}\033[0m'.format('加载模型参数...'))
         if not os.path.exists(save_path):
@@ -175,12 +232,16 @@ class DDPGBase(object):
             return states['episode']
 
     def _learn(self):
-        """训练网络"""
-        # 将eval网络参数赋给target网络
+        """Train network.
+        
+        Returns:
+          The td_error and loss of training process.
+        """
+        # assign eval network parameters to target network
         soft_update(self.actor_target, self.actor_eval, self.tau)
         soft_update(self.critic_target, self.critic_eval, self.tau)
 
-        # 获取batch并拆解
+        # get and spilt the batch
         batch = self.buff.get_batch_splited_tensor(CUDA, self.batch_size)
         if batch is None:
             return None, None
@@ -188,20 +249,20 @@ class DDPGBase(object):
             self.start_train = True
         batch_cur_states, batch_actions, batch_rewards, batch_dones, batch_next_states = batch
 
-        # 计算target_q，指导cirtic更新
-        # 通过a_target和next_state计算target网络会选择的下一动作 next_action；通过target_q和next_states、刚刚计算的next_actions计算下一状态的q_values
+        # calculate target_q, guide cirtic update
+        # calculate next_action that the target network will choose through a_target and next_state; compute the q_values of the next state through target_q, next_states, and next_actions just calculated
         target_q_next = self.critic_target(batch_next_states, self.actor_target(batch_next_states))
-        target_q = batch_rewards + self.gamma * (1 - batch_dones) * target_q_next   # 如果done，则不考虑未来
-        # 指导critic更新
+        target_q = batch_rewards + self.gamma * (1 - batch_dones) * target_q_next   # If done, the future is not considered.
+        # guide critic update
         q_value = self.critic_eval(batch_cur_states, batch_actions)
         td_error = self.mse_loss(target_q, q_value)
         self.critic_optim.zero_grad()
         td_error.backward()
         self.critic_optim.step()
 
-        # 指导actor更新
-        policy_loss = self.critic_eval(batch_cur_states, self.actor_eval(batch_cur_states))  # 用更新的eval网络评估这个动作
-        # 如果 a是一个正确的行为的话，那么它的policy_loss应该更贴近0
+        # guide actor update
+        policy_loss = self.critic_eval(batch_cur_states, self.actor_eval(batch_cur_states))  # evaluate this action with the updated eval network
+        # If a is a correct behavior, then its policy_loss should be closer to 0.
         loss_a = -torch.mean(policy_loss)
         self.actor_optim.zero_grad()
         loss_a.backward()
@@ -209,6 +270,7 @@ class DDPGBase(object):
         return td_error.detach().cpu().numpy(), loss_a.detach().cpu().numpy()
 
     def learn(self):
+        """Specify the trained loss as the data required for visualization."""
         c_loss, a_loss = self._learn()
         if all((c_loss is not None, a_loss is not None)):
             self.step += 1
@@ -217,16 +279,31 @@ class DDPGBase(object):
                 self.summary_writer.add_scalar('a_loss', a_loss, self.step)
 
     def _add_step(self, s, a, r, d, s_):
-        """向经验回放池添加一条记录"""
+        """Add a record to the experience replay pool.
+        
+        Args:
+          s:State at this moment.
+          a:Action output at this moment.
+          r:Reward after taking the action.
+          d:A sign to indicate whether training is stopped.
+          s_:State at next moment.
+        """
         self.buff.add_step(s, a, r, d, s_)
 
     def add_step(self, s, a, r, d, s_):
-        """添加记录的默认实现
-        除了添加记录之外不做任何操作
+        """The default implementation of adding records, do nothing except add records.
+
+        Args:
+          s:State at this moment.
+          a:Action output at this moment.
+          r:Reward after taking the action.
+          d:A sign to indicate whether training is stopped.
+          s_:State at next moment.
         """
         self._add_step(s, a, r, d, s_)
 
     def cuda(self):
+        """Use gpu training."""
         self.actor_eval.cuda()
         self.actor_target.cuda()
         self.critic_eval.cuda()
