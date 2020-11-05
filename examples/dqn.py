@@ -8,18 +8,17 @@
 """
 import torch
 import numpy as np
-import vvlab
 from functools import reduce
 import gym
 from vvlab.agents import DQNBase
 from vvlab.models import SimpleDQNNet
-CUDA = torch.cuda.is_available()
 from torch.utils.tensorboard import SummaryWriter
+CUDA = torch.cuda.is_available()
 
 
 class DQN(DQNBase):
-    """DQN class created based on DQNBase. 
-    
+    """DQN class created based on DQNBase.
+
     Create eval dqn network and target dqn network through the attached simple neural network.
     """
     def _build_net(self):
@@ -39,12 +38,12 @@ def rl_loop():
     # train
     for ep in range(MAX_EPISODES):
         cur_state = env.reset()
-        cur_state = cur_state.reshape((-1,n_states))
+        cur_state = cur_state.reshape((-1, n_states))
         done = False
         while not done:
             action = agent.get_action(cur_state)[0]
             next_state, reward, done, info = env.step(action)
-            next_state = next_state.reshape((-1,n_states))
+            next_state = next_state.reshape((-1, n_states))
             agent.add_step(cur_state, action, reward, done, next_state)
             loss = agent.learn()
             if loss:

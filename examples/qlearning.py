@@ -9,7 +9,6 @@
 
 import time
 import gym
-import vvlab
 from vvlab.agents import LinearBase
 
 
