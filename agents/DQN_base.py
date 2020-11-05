@@ -10,8 +10,6 @@
 import torch
 import torch.nn as nn
 import numpy as np
-import pandas as pd
-import gym
 from ..utils import ReplayBuffer
 CUDA = torch.cuda.is_available()
 
@@ -19,7 +17,8 @@ CUDA = torch.cuda.is_available()
 class DQNBase(object):
     """The base class for DQN."""
 
-    def __init__(self, n_states, n_actions, learning_rate=0.001, discount_rate=0.0, card_no=0, **kwargs):
+    def __init__(self, n_states, n_actions, learning_rate=0.001,
+                 discount_rate=0.0, card_no=0, **kwargs):
         """Initialize two networks and experience playback pool of DQN.
 
         Args:
@@ -50,7 +49,9 @@ class DQNBase(object):
         if 'batch_size' in kwargs:
             self.batch_size = kwargs['batch_size']
         self.replay_buff = ReplayBuffer(n_states, 1, buff_size=self.buff_size,
-                                        buff_thres=self.buff_thres, batch_size=self.batch_size, card_no=self.card_no)
+                                        buff_thres=self.buff_thres,
+                                        batch_size=self.batch_size,
+                                        card_no=self.card_no)
         # define optimizer and loss function
         self.optimizer = torch.optim.Adam(
             self.eval_net.parameters(), lr=learning_rate)
@@ -75,12 +76,14 @@ class DQNBase(object):
           state:State at this moment.
 
         Return:
-          The action output selected under the random or epsilon-greedy strategy according to the random number.
+          The action output.
         """
         # epsilon update
         self.epsilon = self.epsilon * \
-            self.epsilon_decay if self.epsilon > self.epsilon_min else self.epsilon
-        # convert row vector to column vector (1 x n_states -> n_states x 1 x 1)
+            self.epsilon_decay \
+            if self.epsilon > self.epsilon_min else self.epsilon
+        # convert row vector to column vector
+        # (1 x n_states -> n_states x 1 x 1)
         if np.random.rand() < self.epsilon:
             # random
             action_size = state.shape[0]
@@ -89,7 +92,7 @@ class DQNBase(object):
             # greedy
             state = torch.unsqueeze(torch.FloatTensor(state), 0)
             action_values = self.eval_net.forward(state).cpu()
-            return action_values.data.numpy().argmax(axis=len(action_values.shape)-1)
+            return action_values.data.numpy().argmax(axis=2)
 
     def get_raw_out(self, state):
         """Get the original actions.
@@ -98,10 +101,11 @@ class DQNBase(object):
           state:State at this moment.
 
         Returns:
-          Action values before selected by argmax under epsilon-greedy strategy.
+          Action values before selected by argmax.
         """
         state = torch.unsqueeze(torch.FloatTensor(state), 0)
         action_values = self.eval_net.forward(state)
+        print(action_values)
         return action_values
 
     def add_step(self, cur_state, action, reward, done, next_state):
@@ -125,13 +129,14 @@ class DQNBase(object):
         batch = self.replay_buff.get_batch_splited_tensor(CUDA)
         if batch is None:
             return None
-        # parameter copy
+        # copy parameter
         if self.eval_step % self.eval_every == 0:
             self.target_net.load_state_dict(self.eval_net.state_dict())
         # update training steps
         self.eval_step += 1
         # split batch
-        batch_cur_states, batch_actions, batch_rewards, batch_dones, batch_next_states = batch
+        batch_cur_states, batch_actions, \
+            batch_rewards, batch_dones, batch_next_states = batch
         # calculation error
         q_eval = self.eval_net(batch_cur_states)
         q_eval = q_eval.gather(1, batch_actions.long())  # shape (batch, 1)

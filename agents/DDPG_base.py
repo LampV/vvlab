@@ -6,13 +6,11 @@
 @edit time: 2020-04-07 19:55
 @FilePath: /vvlab/agents/DDPG_base.py
 """
-import numpy as np
 import os
-import logging
 import torch.nn as nn
 import torch
 from torch.utils.tensorboard import SummaryWriter
-from ..utils import CUDA, OUProcess, ReplayBuffer
+from ..utils import CUDA, ReplayBuffer
 from ..utils.update import soft_update
 import warnings
 
@@ -20,10 +18,10 @@ import warnings
 class DDPGBase(object):
     """The base class for DDPG."""
 
-    def __init__(self, n_states, n_actions, action_bound=1, buff_size=1000, buff_thres=0, batch_size=32,
-                 lr_a=0.001, lr_c=0.002, tau=0.01, gamma=0.9,
-                 summary=False, *args, **kwargs):
-         """Initialize the base class.
+    def __init__(self, n_states, n_actions, action_bound=1, buff_size=1000,
+                 buff_thres=0, batch_size=32, lr_a=0.001, lr_c=0.002, tau=0.01,
+                 gamma=0.9, summary=False, *args, **kwargs):
+        """Initialize the base class.
 
          Args:
            n_states:Number of states.
@@ -35,8 +33,9 @@ class DDPGBase(object):
            lr_a:Learning rate of actor.
            lr_c:Learning rate of critic.
            tau:Soft update factor.
-           gamma:When evaluating an action, the weight of the value of the next action.
-           summary:To decide whether provide the possibility to obtain the file save path from the parameter.
+           gamma:Set the weight of the value of the next action.
+           summary:To decide whether provide the possibility
+           to obtain the file save path from the parameter.
            *args:Pack the parameters into tuples and call the function body.
            **kwargs:Pack the parameters into dicts and call the function body.
          """
@@ -49,21 +48,25 @@ class DDPGBase(object):
             action_bound = kwargs['bound']
             self.bound = action_bound
         if 'exp_size' in kwargs:
-            warnings.warn("'exp_size' is deprecated and will remove after 0.3.0. "
+            warnings.warn("'exp_size' is deprecated \
+                    and will remove after 0.3.0. "
                           "Use 'buff_size' instead.",
                           DeprecationWarning, stacklevel=2)
             buff_size = kwargs['exp_size']
             self.exp_size = buff_size
         if 'exp_thres' in kwargs:
-            warnings.warn("'exp_thres' is deprecated and will remove after 0.3.0. "
+            warnings.warn("'exp_thres' is deprecated \
+                    and will remove after 0.3.0. "
                           "Use 'buff_thres' instead.",
                           DeprecationWarning, stacklevel=2)
             buff_thres = kwargs['exp_thres']
             self.exp_thres = buff_thres
 
         # copy parameters
-        self.n_states, self.n_actions, self.action_bound = n_states, n_actions, action_bound
-        self.buff_size, self.buff_thres, self.batch_size = buff_size, buff_thres, batch_size
+        self.n_states, self.n_actions, self.action_bound = \
+            n_states, n_actions, action_bound
+        self.buff_size, self.buff_thres, self.batch_size = \
+            buff_size, buff_thres, batch_size
         self.lr_a, self.lr_c, self.tau, self.gamma = lr_a, lr_c, tau, gamma
         self.summary = summary
         self.kwargs = kwargs
@@ -74,13 +77,17 @@ class DDPGBase(object):
         self._param_override()
 
         # create experience replay pool
-        self.buff = ReplayBuffer(self.n_states, self.n_actions, buff_size=self.buff_size, buff_thres=self.buff_thres)
+        self.buff = ReplayBuffer(self.n_states, self.n_actions,
+                                 buff_size=self.buff_size,
+                                 buff_thres=self.buff_thres)
 
         # bulid neural networks
         self._build_net()
         # specify optimizer
-        self.actor_optim = torch.optim.Adam(self.actor_eval.parameters(), lr=self.lr_a)
-        self.critic_optim = torch.optim.Adam(self.critic_eval.parameters(), lr=self.lr_c)
+        self.actor_optim = \
+            torch.optim.Adam(self.actor_eval.parameters(), lr=self.lr_a)
+        self.critic_optim = \
+            torch.optim.Adam(self.critic_eval.parameters(), lr=self.lr_c)
         # specify loss function
         self.mse_loss = nn.MSELoss()
 
@@ -95,9 +102,10 @@ class DDPGBase(object):
             self.cuda()
 
     def _param_override(self):
-        """Provide a method for subclass to simply override the parameters of the baseclass.
-       
-        For example: modify whether summary is enabled.This method should be used with caution.
+        """A method for subclass to override the parameters of the baseclass.
+
+        For example: Modify whether summary is enabled.
+        This method should be used with caution.
         """
         pass
 
@@ -105,7 +113,7 @@ class DDPGBase(object):
         """Build network.
 
         Raises:
-          TypeError:网络构建函数未被实现
+          TypeError:Network build no implementation.
         """
         raise TypeError("网络构建函数未被实现")
 
@@ -113,20 +121,23 @@ class DDPGBase(object):
         """Build noise generator.
 
         Raises:
-          TypeError:噪声发生器构建函数未被实现
+          TypeError:Noise generator build no implementation.
         """
         raise TypeError("噪声发生器构建函数未被实现")
 
     def _build_summary_writer(self):
         """Build summary writer.
 
-        When "summary" is set to true, if no summary writer is specified, it will be set to None,
-        if the save path is specified, use the save path, otherwise use the default path.
+        When "summary" is set to true,
+        if no summary writer is specified, it will be set to None,
+        if the save path is specified, use the save path,
+        otherwise use the default path.
         """
         if self.summary:
             if 'summary_path' in self.kwargs:
-                self.summary_writer = SummaryWriter(log_dir=kwargs['summary_path'])
-                self._build_summary_writer(kwargs['summary_path'])
+                self.summary_writer = \
+                    SummaryWriter(log_dir=self.kwargs['summary_path'])
+                self._build_summary_writer(self.kwargs['summary_path'])
             else:
                 self.summary_writer = SummaryWriter()
         else:
@@ -138,10 +149,9 @@ class DDPGBase(object):
 
     def _get_action(self, s):
         """Get the selected action under current state.
-        
+
         Args:
           s:Given state.
-        
         Returns:
           The selected action.
         """
@@ -150,11 +160,11 @@ class DDPGBase(object):
         return action
 
     def get_action(self, s):
-        """Get the selected action under given state.
-        
+        """Get the selected action under current state.
+
         Args:
           s:Given state.
-        
+
         Returns:
           The selected action.
         """
@@ -194,7 +204,7 @@ class DDPGBase(object):
 
         Args:
           save_path: The save path of the model.
-        
+
         Returns:
           The loaded model dictionary.
         """
@@ -209,7 +219,7 @@ class DDPGBase(object):
         self.critic_eval.load_state_dict(states['critic_eval_net'])
         self.critic_target.load_state_dict(states['critic_target_net'])
 
-        # load episode and step information from the model
+        # load 'episode' and 'step' from the model
         self.episode, self.step = states['episode'], states['step']
         # return states
         return states
@@ -219,8 +229,8 @@ class DDPGBase(object):
 
         Args:
           save_path: The save path of the model，default is'./cur_model.pth'.
-        
-        Returns: 
+
+        Returns:
           Recorded episode value.
         """
         print('\033[1;31;40m{}\033[0m'.format('加载模型参数...'))
@@ -233,7 +243,7 @@ class DDPGBase(object):
 
     def _learn(self):
         """Train network.
-        
+
         Returns:
           The td_error and loss of training process.
         """
@@ -247,12 +257,21 @@ class DDPGBase(object):
             return None, None
         else:
             self.start_train = True
-        batch_cur_states, batch_actions, batch_rewards, batch_dones, batch_next_states = batch
+        batch_cur_states, batch_actions, batch_rewards, \
+            batch_dones, batch_next_states = batch
 
         # calculate target_q, guide cirtic update
-        # calculate next_action that the target network will choose through a_target and next_state; compute the q_values of the next state through target_q, next_states, and next_actions just calculated
-        target_q_next = self.critic_target(batch_next_states, self.actor_target(batch_next_states))
-        target_q = batch_rewards + self.gamma * (1 - batch_dones) * target_q_next   # If done, the future is not considered.
+        # calculate next_action that
+        # the target network will choose through a_target and next_state;
+        # compute the q_values of the next state through
+        # target_q, next_states, and next_actions just calculated
+        target_q_next = \
+            self.critic_target(batch_next_states,
+                               self.actor_target(batch_next_states))
+        target_q = \
+            batch_rewards + self.gamma * \
+            (1 - batch_dones) * \
+            target_q_next   # If done, the future is not considered.
         # guide critic update
         q_value = self.critic_eval(batch_cur_states, batch_actions)
         td_error = self.mse_loss(target_q, q_value)
@@ -261,8 +280,11 @@ class DDPGBase(object):
         self.critic_optim.step()
 
         # guide actor update
-        policy_loss = self.critic_eval(batch_cur_states, self.actor_eval(batch_cur_states))  # evaluate this action with the updated eval network
-        # If a is a correct behavior, then its policy_loss should be closer to 0.
+        policy_loss = \
+            self.critic_eval(batch_cur_states, self.actor_eval(
+                batch_cur_states))  # 用更新的eval网络评估这个动作
+        # If a is a correct behavior, then its policy_loss
+        # should be closer to 0.
         loss_a = -torch.mean(policy_loss)
         self.actor_optim.zero_grad()
         loss_a.backward()
@@ -280,7 +302,7 @@ class DDPGBase(object):
 
     def _add_step(self, s, a, r, d, s_):
         """Add a record to the experience replay pool.
-        
+
         Args:
           s:State at this moment.
           a:Action output at this moment.

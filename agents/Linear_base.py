@@ -12,14 +12,16 @@ import pandas as pd
 
 
 class LinearBase:
-    """The base class for linear learning (QLearning, Sarsa and deformation)."""
+    """The base class for linear learning
+    (QLearning, Sarsa and deformation)."""
 
-    def __init__(self, actions: list, e_greedy: float, learning_rate, reward_decay):
+    def __init__(self, actions: list, e_greedy: float,
+                 learning_rate, reward_decay):
         """Initialize the base class.
 
         Args:
-          actions: Set of actions that can be taken.(Note: The prescribed actions are all non-negative integers.)
-          e_greedy: Initial value of epsilon-greedy,the probability of selecting the most valuable action.
+          actions: Set of actions that can be taken.
+          e_greedy: Initial value of epsilon-greedy.
           learning_rate: Decide how much error this time is to be learned.
           reward_decay: Attenuation value for future reward.
         """
@@ -30,14 +32,15 @@ class LinearBase:
         self.gamma = reward_decay
 
     def choose_action(self, observation, epsilon=None):
-        """Get the action corresponding to the current state. 
+        """Get the action corresponding to the current state.
 
-        Select the value of the largest value from the Q table according to the probability of epsilon, 
-        and randomly select the rest.
+        Select the value of the largest value from the Q table
+        according to the probability of epsilon, and randomly select the rest.
 
         Args:
           observation: State at this moment.
-          epsilon: The epsilon value, if this value is not passed, it will be random according to the default value set at the beginning.
+          epsilon: The epsilon value, if this value is not passed, it will be
+          random according to the default value set at the beginning.
 
         Returns:
           Action at this moment.
@@ -45,7 +48,8 @@ class LinearBase:
         # make sure epsilon is set
         if not epsilon:
             epsilon = self.epsilon
-        # check whether the current state exists (it will be initialized if it does not exist)
+        # check whether the current state exists
+        # (it will be initialized if it does not exist)
         self.check_state_exist(observation)
 
         # select action
@@ -53,20 +57,23 @@ class LinearBase:
             # get the QTable row corresponding to the current state
             state_actions = self.q_table.loc[observation, :]
             # randomly select from all indexes with the largest value
-            action = np.random.choice(
-                state_actions[state_actions == np.max(state_actions)].index)
+            action = \
+                np.random.choice(
+                    state_actions[state_actions ==
+                                  np.max(state_actions)].index)
         else:
             # random selection
             action = np.random.choice(self.actions)
         return action
 
     def check_state_exist(self, state):
-        """Check whether the status exists. 
+        """Check whether the status exists.
 
-        If it does not exist, add it to the row of QTable and initialize it to all 0s.
+        If it does not exist,
+        add it to the row of QTable and initialize it to all 0s.
 
         Args:
-          state:State. 
+          state:State.
         """
         if state not in self.q_table.index:
             # append new state to q table
