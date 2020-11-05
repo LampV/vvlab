@@ -19,7 +19,8 @@ CUDA = torch.cuda.is_available()
 class DQN(DQNBase):
     """DQN class created based on DQNBase.
 
-    Create eval dqn network and target dqn network through the attached simple neural network.
+    Create eval dqn network and target dqn network
+    through the attached simple neural network.
     """
     def _build_net(self):
         """Build a basic network."""

@@ -15,14 +15,16 @@ from vvlab.agents import LinearBase
 class QLearning(LinearBase):
     """QLearning class created based on linear QTable."""
 
-    def __init__(self, actions, learning_rate=0.01, reward_decay=0.9, e_greedy=0.9):
+    def __init__(self, actions, learning_rate=0.01,
+                 reward_decay=0.9, e_greedy=0.9):
         """Initialization of Qlearning class.
 
         Args:
           actions:Set of actions that can be taken.
           learning_rate:Decide how much error this time is to be learned.
           reward_decay:Attenuation value for future reward.
-          e_greedy:A parameter used in decision-making to determine the proportion of actions selected according to the QTable.
+          e_greedy:A parameter used in decision-making to determine
+          the proportion of actions selected according to the QTable.
         """
         super(QLearning, self).__init__(
             actions, e_greedy, learning_rate, reward_decay)

@@ -20,10 +20,10 @@ class DDPG(DDPGBase):
     """An example for creation of DDPG class."""
 
     def _param_override(self):
-        """Provide a method for subclass to simply override the parameters of the baseclass.
+        """A method for subclass to override the parameters of the baseclass.
 
-        When "summary" is set to true,
-        it provides the possibility to obtain the file save path from the parameter
+        When "summary" is set to true, it provides the possibility
+        to obtain the file save path from the parameter
         and specifies the data required for visualization.
         """
         self.summary = True
@@ -42,7 +42,8 @@ class DDPG(DDPGBase):
     def _build_noise(self):
         """Build a noise process.
 
-        If you need noise,you can use: self.noise = OUProcess(self.n_actions, sigma=0.1)
+        If you need noise,you can use:
+        self.noise = OUProcess(self.n_actions, sigma=0.1)
         For special cases where nosie function is not needed, you can pass.
         """
         pass
@@ -52,7 +53,7 @@ class DDPG(DDPGBase):
 
         Args:
           state:State at this moment.
-          rate: Exploration efficiency,it will gradually decrease during the training process.
+          rate: Exploration efficiency.
 
         returns:
           The action value after adding noise.
