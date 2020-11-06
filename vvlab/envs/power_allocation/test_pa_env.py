@@ -1,4 +1,4 @@
-from pa_env import (
+from .pa_env import (
     PAEnv,
     Node
 )
