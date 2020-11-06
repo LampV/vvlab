@@ -47,4 +47,3 @@ class SimpleActorNet(nn.Module):
         action_value = F.tanh(x)
         action_value = action_value * self.bound
         return action_value
-

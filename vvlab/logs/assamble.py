@@ -5,11 +5,10 @@
 @create time: 2020-04-07 17:02
 @edit time: 2020-04-07 18:10
 @FilePath: /vvlab/logs/assamble.py
-@desc: 
+@desc:
 """
 
 
-import json
 import logging
 import logging.config
 import logging.handlers
@@ -26,7 +25,8 @@ levels = {
 formatters = {
     'none': None,
     "simple": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    "deprecation": "%(pathname)s:%(module)s:%(funcName)s:%(lineno)d: DeprecationWarning: %(message)s"
+    "deprecation": "%(pathname)s: %(module)s: %(funcName)s: \
+            %(lineno)d: DeprecationWarning: %(message)s"
 }
 
 
@@ -44,9 +44,11 @@ htypes = {
 }
 
 
-def singleHandler(htype='stream', level='warning', formatter='none', *args, **kwargs):
+def singleHandler(htype='stream', level='warning',
+                  formatter='none', *args, **kwargs):
     # assert params are valid
-    checks = {'htype': htypes.keys(), 'level': levels.keys(), 'formatter': formatters.keys()}
+    checks = {'htype': htypes.keys(), 'level': levels.keys(),
+              'formatter': formatters.keys()}
     for param, valids in checks.items():
         valids = list(k for k in valids)
         valids_str = ', '.join(valids[:-1]) + ' or ' + valids[-1]
@@ -56,7 +58,8 @@ def singleHandler(htype='stream', level='warning', formatter='none', *args, **kw
     # create handler
     creater = htypes[htype]
     if htype == 'file':
-        filename = 'default.log' if 'filename' not in kwargs else kwargs['filename']
+        filename = 'default.log' if 'filename' not in kwargs \
+                else kwargs['filename']
         handler = creater(filename)
     else:
         handler = creater()

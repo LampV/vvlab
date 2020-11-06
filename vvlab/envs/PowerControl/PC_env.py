@@ -33,11 +33,12 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"   # My NVIDIA GTX 1080 Ti FE GPU
 
 
 class radio_environment(gym.Env):
-    """In a two user two base station scenario, the SNR of the user depends on 
-    the channel between the user and the base station, the transmission power and the beamforming mode of 
-    the communication base station and the interference base station.
-    
-        Observation: 
+    """In a two user two base station scenario, the SNR of the user depends on
+    the channel between the user and the base station, the transmission power
+    and the beamforming mode of the communication base station
+    and the interference base station.
+
+        Observation:
             Num Observation                                    Min      Max
             0   User1 server X                                 -r       r
             1   User1 server Y                                 -r       r
@@ -49,10 +50,12 @@ class radio_environment(gym.Env):
             7   BF codebook index for Neighbor                 0        M-1
 
     Attributes:
-        M_ULA: Base station employs a uniform linear array (ULA) of M antennas. 
+        M_ULA: Base station employs a uniform linear array (ULA) of M antennas.
         received_sinr_dB: SINR accepted by users.
-        serving_transmit_power_dB: Transmission power of communication base station.
-        interfering_transmit_power_dB: Transmission power of interfering base station. 
+        serving_transmit_power_dB: Transmission power of
+        communication base station.
+        interfering_transmit_power_dB: Transmission power of
+        interfering base station.
     """
 
     def __init__(self, seed):
@@ -137,13 +140,13 @@ class radio_environment(gym.Env):
 
     def reset(self, seed):
         """Reset enviornment.
-        
+
         Args:
             seed: A fixed value.
 
         Returns:
             A fixed state.
-            
+
         """
         # Initialize f_n of both cells
         self.np_random, seed = seeding.np_random(seed)
@@ -151,20 +154,21 @@ class radio_environment(gym.Env):
         self.f_n_bs2 = self.np_random.randint(self.M_ULA)
 
         self.state = [self.np_random.uniform(
-                          low=-self.cell_radius, high=self.cell_radius),
-                      self.np_random.uniform(
-                          low=-self.cell_radius, high=self.cell_radius),
-                      self.np_random.uniform(
-                          low=self.inter_site_distance-self.cell_radius, high=self.inter_site_distance+self.cell_radius),
-                      self.np_random.uniform(
-                          low=-self.cell_radius, high=self.cell_radius),
-                      self.np_random.uniform(
-                          low=1, high=self.max_tx_power/2),
-                      self.np_random.uniform(
-                          low=1, high=self.max_tx_power_interference/2),
-                      self.f_n_bs1,
-                      self.f_n_bs2
-                      ]
+            low=-self.cell_radius, high=self.cell_radius),
+            self.np_random.uniform(
+            low=-self.cell_radius, high=self.cell_radius),
+            self.np_random.uniform(
+            low=self.inter_site_distance-self.cell_radius,
+            high=self.inter_site_distance+self.cell_radius),
+            self.np_random.uniform(
+            low=-self.cell_radius, high=self.cell_radius),
+            self.np_random.uniform(
+            low=1, high=self.max_tx_power/2),
+            self.np_random.uniform(
+            low=1, high=self.max_tx_power_interference/2),
+            self.f_n_bs1,
+            self.f_n_bs2
+        ]
 
         self.step_count = 0
 
@@ -172,25 +176,30 @@ class radio_environment(gym.Env):
 
     def step(self, action):
         """
-        
-        This function is used to update the environment after the agent outputs the action.
-        
+
+        This function is used to update the environment
+        after the agent outputs the action.
+
         Args:
             action: The action of agent.
 
         Returns:
             state: The state of doing an action.
             reward: Evaluate the result of an action.
-            done: If the SNR, transmission power and interference power are within a certain 
-                range after updating according to a certain action, done is true.
-            abort: If the SNR, transmission power and interference power are not within a certain 
-                range after updating according to a certain action, abort is true.
+            done: If the SNR, transmission power and interference power
+            are within a certain range after updating
+            according to a certain action, done is true.
+            abort: If the SNR, transmission power and interference power
+            are not within a certain range after updating
+            according to a certain action, abort is true.
         """
-       # assert self.action_space.contains(action), "%r (%s) invalid"%(action, type(action))
+        # assert self.action_space.contains(action),
+        # "%r (%s) invalid"%(action, type(action))
 
         state = self.state
         reward = 0
-        x_ue_1, y_ue_1, x_ue_2, y_ue_2, pt_serving, pt_interferer, f_n_bs1, f_n_bs2 = state
+        x_ue_1, y_ue_1, x_ue_2, y_ue_2, pt_serving, pt_interferer, \
+            f_n_bs1, f_n_bs2 = state
         # based on the action make your call
         # only once a period, perform BF
         # The action is derived from a decimal interpretation
@@ -260,8 +269,9 @@ class radio_environment(gym.Env):
 
         received_power, interference_power, received_sinr = self._compute_rf(
             x_ue_1, y_ue_1, pt_serving, pt_interferer, is_ue_2=False)
-        received_power_ue2, interference_power_ue2, received_ue2_sinr = self._compute_rf(
-            x_ue_2, y_ue_2, pt_serving, pt_interferer, is_ue_2=True)
+        received_power_ue2, interference_power_ue2, received_ue2_sinr = \
+            self._compute_rf(x_ue_2, y_ue_2, pt_serving,
+                             pt_interferer, is_ue_2=True)
 
         # keep track of quantities...
         self.received_sinr_dB = received_sinr
@@ -270,16 +280,25 @@ class radio_environment(gym.Env):
         self.interfering_transmit_power_dBm = 10*np.log10(pt_interferer*1e3)
 
         # Did we find a FEASIBLE NON-DEGENERATE solution?
-        done = all([(pt_serving <= self.max_tx_power), (pt_serving >= 0), (pt_interferer <= self.max_tx_power_interference), 
-            (pt_interferer >= 0), (received_sinr >= self.min_sinr), (received_ue2_sinr >= self.min_sinr), 
-            (received_sinr >= self.sinr_target), (received_ue2_sinr >= self.sinr_target)])
+        done = all([(pt_serving <= self.max_tx_power), (pt_serving >= 0),
+                    (pt_interferer <= self.max_tx_power_interference),
+                    (pt_interferer >= 0), (received_sinr >= self.min_sinr),
+                    (received_ue2_sinr >= self.min_sinr),
+                    (received_sinr >= self.sinr_target),
+                    (received_ue2_sinr >= self.sinr_target)])
 
-        abort = any([(pt_serving > self.max_tx_power), (pt_interferer > self.max_tx_power_interference), (received_sinr < self.min_sinr), 
-            (received_ue2_sinr < self.min_sinr), (received_sinr > 70), (received_ue2_sinr > 70)])
+        abort = any([(pt_serving > self.max_tx_power),
+                     (pt_interferer > self.max_tx_power_interference),
+                     (received_sinr < self.min_sinr),
+                     (received_ue2_sinr < self.min_sinr),
+                     (received_sinr > 70), (received_ue2_sinr > 70)])
 
-#        print('{:.2f} dB | {:.2f} dB | {:.2f} W | {:.2f} W '.format(received_sinr, received_ue2_sinr, pt_serving, pt_interferer), end='')
+#        print('{:.2f} dB | {:.2f} dB | {:.2f} W | {:.2f} W '.format
+#        (received_sinr, received_ue2_sinr, pt_serving, pt_interferer), end='')
 #        print('Done: {}'.format(done))
-#        print('UE moved to ({0:0.3f},{1:0.3f}) and their received SINR became {2:0.3f} dB.'.format(x,y,received_sinr))
+#        print('UE moved to ({0:0.3f},{1:0.3f})
+#        and their received SINR became {2:0.3f} dB.'.format
+#        (x,y,received_sinr))
 
         # the reward
         reward = received_sinr + received_ue2_sinr
@@ -288,14 +307,17 @@ class radio_environment(gym.Env):
         self.state = (x_ue_1, y_ue_1, x_ue_2, y_ue_2, pt_serving,
                       pt_interferer, f_n_bs1, f_n_bs2)
 
-        if abort == True:
+        if abort is True:
             done = False
             reward = self.reward_min
         else:
             reward += self.reward_max
 
-#        print(done, (received_sinr >= self.sinr_target) , (pt_serving <= self.max_tx_power) , (pt_serving >= 0) , \
-#                (pt_interferer <= self.max_tx_power_interference) , (pt_interferer >= 0) , (received_ue2_sinr >= self.sinr_target))
+#        print(done, (received_sinr >= self.sinr_target) ,
+#        (pt_serving <= self.max_tx_power) ,
+#        (pt_serving >= 0) , \
+#        (pt_interferer <= self.max_tx_power_interference) ,
+#        (pt_interferer >= 0) , (received_ue2_sinr >= self.sinr_target))
 
         if action == -1:        # for optimal
             return np.array(self.state), reward, False, False
@@ -307,7 +329,7 @@ class radio_environment(gym.Env):
 
         Args:
             theta: steering angle.
-            
+
         Returns:
             f: Beamforming Vectors
 
@@ -323,21 +345,21 @@ class radio_environment(gym.Env):
         f = 1. / math.sqrt(self.M_ULA) * np.exp(exponent)
 
         # Test the norm square... is it equal to unity? YES.
-    #    norm_f_sq = LA.norm(f, ord=2) ** 2
-     #   print(norm_f_sq)
+        # norm_f_sq = LA.norm(f, ord=2) ** 2
+        # print(norm_f_sq)
 
         return f
 
     def _compute_channel(self, x_ue, y_ue, x_bs, y_bs):
         """Random value is included in the formula, and formula test is not conducted.
-        
+
         Corresponding to the formula (3) in the paper.
 
         Args:
         x_ue: The abscissa values of user.
         y_ue: The ordinate values of user.
-        x_bs: The abscissa values of base station. 
-        y_bs: The ordinate values of base station. 
+        x_bs: The abscissa values of base station.
+        y_bs: The ordinate values of base station.
 
         Returns: Channel model of downlink.
 
@@ -348,7 +370,7 @@ class radio_environment(gym.Env):
         G_ant = 3  # dBi for beamforming mmWave antennas
 
         # Override the antenna gain if no beamforming
-        if self.use_beamforming == False:
+        if self.use_beamforming is False:
             G_ant = self.G_ant_no_beamforming
 
         # theta is the steering angle.  Sampled iid from unif(0,pi).
@@ -358,30 +380,37 @@ class radio_environment(gym.Env):
         # Calculate the transmission path loss of LOS and NLOS.
         if is_mmWave:
             path_loss_LOS = 10 ** (self._path_loss_mmWave(x_ue,
-                                                          y_ue, PLE_L, x_bs, y_bs) / 10.)
+                                                          y_ue,
+                                                          PLE_L,
+                                                          x_bs, y_bs) / 10.)
             path_loss_NLOS = 10 ** (self._path_loss_mmWave(x_ue,
-                                                           y_ue, PLE_N, x_bs, y_bs) / 10.)
+                                                           y_ue, PLE_N,
+                                                           x_bs, y_bs) / 10.)
         else:
             path_loss_LOS = 10 ** (self._path_loss_sub6(x_ue,
-                                                        y_ue, x_bs, y_bs) / 10.)
+                                                        y_ue,
+                                                        x_bs, y_bs) / 10.)
             path_loss_NLOS = 10 ** (self._path_loss_sub6(x_ue,
-                                                         y_ue, x_bs, y_bs) / 10.)
+                                                         y_ue,
+                                                         x_bs, y_bs) / 10.)
 
         # Bernoulli for p
         alpha = np.zeros(self.Np, dtype=complex)
         p = np.random.binomial(1, self.prob_LOS)
-        # 80% probability is transmitted by Los, and 20% probability is transmitted by NLOS.
-        
+        # 80% probability is transmitted by Los,
+        # and 20% probability is transmitted by NLOS.
+
         # For Los transmission, the number of transmission channels is only 1.
         if p == 1:
             self.Np = 1
             alpha[0] = 1. / math.sqrt(path_loss_LOS)
         else:
             # just changed alpha to be complex in the case of NLOS
-            # The NLOS gain follows Rayleigh distribution and 
+            # The NLOS gain follows Rayleigh distribution and
             # the number of transmission channels is 4.
             alpha = (np.random.normal(size=self.Np) + 1j *
-                     np.random.normal(size=self.Np)) / math.sqrt(path_loss_NLOS)
+                     np.random.normal(size=self.Np)) \
+                / math.sqrt(path_loss_NLOS)
 
         rho = 1. * 10 ** (G_ant / 10.)
         # The reduction of gain loss caused by beamforming.
@@ -395,24 +424,25 @@ class radio_environment(gym.Env):
 
         h *= math.sqrt(self.M_ULA)
 
-#        print ('Warning: channel gain is {} dB.'.format(10*np.log10(LA.norm(h, ord=2))))
+#        print ('Warning: channel gain is {} dB.'.format(
+#        10*np.log10(LA.norm(h, ord=2))))
         return h
 
     def _compute_rf(self, x_ue, y_ue, pt_bs1, pt_bs2, is_ue_2=False):
         """Random value is included in the formula, and formula test is not conducted.
-        
+
         Corresponding to the formula (4) and (5) in the paper.
-        
+
         Args：
         x_ue: The abscissa values of user.
         y_ue: The ordinate values of user.
         pt_bs1: Transmit power of base station 1.
         pt_bs2: Transmit power of base station 2.
-        is_ue_2: 
+        is_ue_2:
             The default is False.
-            If it is True, then base station 2 is communicating with the user, 
+            If it is True, then base station 2 is communicating with the user,
             and the signal sent by base station 1 is interference signal.
-            If it is False, then base station 1 is communicating with the user, 
+            If it is False, then base station 1 is communicating with the user,
             and the signal sent by base station 2 is interference signal.
 
         Returns:
@@ -428,16 +458,18 @@ class radio_environment(gym.Env):
 
         noise_power = k_Boltzmann*T*B  # this is in Watts
 
-        if is_ue_2 == False:
+        if is_ue_2 is False:
             # Without loss of generality, the base station is at the origin
             # The interfering base station is x = cell_radius, y = 0
             x_bs_1, y_bs_1 = self.x_bs_1, self.y_bs_1
             x_bs_2, y_bs_2 = self.x_bs_2, self.y_bs_2
 
             # Now the channel h, which is a vector in beamforming.
-            # This computes the channel for user in serving BS from the serving BS.
+            # This computes the channel for user
+            # in serving BS from the serving BS.
             h_1 = self._compute_channel(x_ue, y_ue, x_bs=x_bs_1, y_bs=y_bs_1)
-            # This computes the channel for user in serving BS from the interfering BS.
+            # This computes the channel for user
+            # in serving BS from the interfering BS.
             h_2 = self._compute_channel(x_ue, y_ue, x_bs=x_bs_2, y_bs=y_bs_2)
 
             # if this is not beamforming, there is no precoder:
@@ -455,9 +487,11 @@ class radio_environment(gym.Env):
             x_bs_2, y_bs_2 = self.x_bs_2, self.y_bs_2
 
             # Now the channel h, which is a vector in beamforming.
-            # This computes the channel for user in serving BS from the serving BS.
+            # This computes the channel for user
+            # in serving BS from the serving BS.
             h_1 = self._compute_channel(x_ue, y_ue, x_bs=x_bs_2, y_bs=y_bs_2)
-            # This computes the channel for user in serving BS from the interfering BS.
+            # This computes the channel for user
+            # in serving BS from the interfering BS.
             h_2 = self._compute_channel(x_ue, y_ue, x_bs=x_bs_1, y_bs=y_bs_1)
 
             # if this is not beamforming, there is no precoder:
@@ -479,7 +513,8 @@ class radio_environment(gym.Env):
 
     # https://ieeexplore-ieee-org.ezproxy.lib.utexas.edu/stamp/stamp.jsp?tp=&arnumber=7522613
     def _path_loss_mmWave(self, x, y, PLE, x_bs=0, y_bs=0):
-        """Normal distribution is included in the formula, and formula test is not conducted.
+        """Normal distribution is included in the formula,
+        and formula test is not conducted.
 
         Args:
         x : The abscissa values of user.
@@ -499,7 +534,7 @@ class radio_environment(gym.Env):
         A = 0.0671
         Nr = self.M_ULA
         sigma_sf = 9.1
-        #PLE = 3.812
+        # PLE = 3.812
 
         d = math.sqrt((x - x_bs)**2 + (y - y_bs)**2)  # in meters
         if d == 0:
@@ -515,7 +550,7 @@ class radio_environment(gym.Env):
 
     def _path_loss_sub6(self, x, y, x_bs=0, y_bs=0):
         """
-        
+
         Args:
         x: The abscissa values of user.
         y: The ordinate values of user
@@ -527,7 +562,7 @@ class radio_environment(gym.Env):
 
         """
         f_c = self.f_c
-        c = 3e8  # speed of light
+        # c = 3e8  # speed of light
         d = math.sqrt((x - x_bs)**2 + (y - y_bs)**2)
         if d == 0:
             L = 0
@@ -537,20 +572,16 @@ class radio_environment(gym.Env):
 
     #        print('Distance from cell site is: {} km'.format(d/1000.))
             # FSPL
-            L_fspl = -10*np.log10((4.*math.pi*c/f_c / d) ** 2)
+            # L_fspl = -10*np.log10((4.*math.pi*c/f_c / d) ** 2)
 
             # COST-231Hata model. It is a empirical formula.
-            C = 3#Correction factor of metropolis center
+            C = 3  # Correction factor of metropolis center
             a = (1.1 * np.log10(f_c/1e6) - 0.7) * \
                 h_R - (1.56*np.log10(f_c/1e6) - 0.8)
             L_cost231 = 46.3 + 33.9 * np.log10(f_c/1e6) + 13.82 * np.log10(
-                h_B) - a + (44.9 - 6.55 * np.log10(h_B)) * np.log10(d/1000.) + C
+                h_B) - a + (44.9 - 6.55 * np.log10(h_B)) * np.log10(
+                d/1000.) + C
 
             L = L_cost231
 
         return L  # in dB
-
-
-
-
-

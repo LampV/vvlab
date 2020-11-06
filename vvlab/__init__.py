@@ -5,6 +5,3 @@
 @create time: 2019-11-25 10:49
 @edit time: 2020-09-25 16:16
 """
-
-from gym.envs.registration import register
-import vvlab.envs

@@ -27,5 +27,6 @@ class TestEnvFunc:
     def test_compute_bf_vector(self):
         bf_vector_1 = self.env._compute_bf_vector(math.pi/3)
         bf_vector_2 = [(0.5+0.0j), (-1.9142843494634747e-16+0.5j),
-                       (-0.5-3.8285686989269494e-16j), (7.963299097640738e-16-0.5j)]
+                       (-0.5-3.8285686989269494e-16j),
+                       (7.963299097640738e-16-0.5j)]
         assert not (bf_vector_2 - bf_vector_1).any()

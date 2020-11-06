@@ -14,4 +14,4 @@ from .OUProcess import OUProcess
 from .ReplayBuffer import ReplayBuffer
 from .update import soft_update
 
-__all__ = ['CUDA', 'OUPrecess', 'ReplayBuffer', 'soft_update']
+__all__ = ['CUDA', 'OUProcess', 'ReplayBuffer', 'soft_update']

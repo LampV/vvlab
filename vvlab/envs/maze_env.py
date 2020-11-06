@@ -56,7 +56,8 @@ class MazeEnv(gym.Env):
 
     def get_done(self):
         """获取是否结束"""
-        return any(all(self.player_pos == h) for h in self.hells) or any(all(self.player_pos == o) for o in self.ovals)
+        return any(all(self.player_pos == h) for h in self.hells) or any(
+                all(self.player_pos == o) for o in self.ovals)
 
     def get_info(self):
         """获取额外信息"""
@@ -70,7 +71,8 @@ class MazeEnv(gym.Env):
         """
         action = np.clip(int(action), 0, 3)  # 限制action是整数且范围不能超过range(4)
         actions = {
-            0: np.array([-1, 0]), 1: np.array([1, 0]), 2: np.array([0, -1]), 3: np.array([0, 1])
+            0: np.array([-1, 0]), 1: np.array([1, 0]),
+            2: np.array([0, -1]), 3: np.array([0, 1])
         }   # 定义action对应的x和y值变化
         next_pos = self.player_pos + actions[action]
         h_limit, w_limit = self.observation_space.shape
@@ -79,7 +81,8 @@ class MazeEnv(gym.Env):
             # 只有x和y都在范围内才算这一步有效
             self.player_pos = next_pos
         self.step_count += 1
-        return self.get_obs(), self.get_reward(), self.get_done(), self.get_info()
+        return self.get_obs(), self.get_reward(), self.get_done(
+                ), self.get_info()
 
     def render(self):
         pass

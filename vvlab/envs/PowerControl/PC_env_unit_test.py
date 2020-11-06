@@ -20,7 +20,7 @@ class TestEnvFunc:
 
     # Check that dtype is explicitly declared for gym.Box spaces
         for warning_msg in warnings:
-            assert not 'autodetected dtype' in str(warning_msg.message)
+            assert 'autodetected dtype' not in str(warning_msg.message)
 
         ob_space = self.env.observation_space
         act_space = self.env.action_space
@@ -30,7 +30,8 @@ class TestEnvFunc:
         action = act_space.sample()
         observation, reward, done, _info = self.env.step(action)
         assert ob_space.contains(
-            observation), 'Step observation: {!r} not in space'.format(observation)
+            observation), 'Step observation: {!r} not in space'.format(
+            observation)
         assert np.isscalar(reward), "{} is not a scalar for {}".format(
             reward, self.env)
         assert isinstance(

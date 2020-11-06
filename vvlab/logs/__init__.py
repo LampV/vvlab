@@ -7,5 +7,3 @@
 @FilePath: /vvlab/logs/__init__.py
 @desc: init file of log
 """
-
-

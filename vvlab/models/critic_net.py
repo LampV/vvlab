@@ -34,7 +34,7 @@ class SimpleCriticNet(nn.Module):
 
     def forward(self, s, a):
         """
-        定义网络结构: 
+        定义网络结构:
         state -> 全连接   -·-->  中间层 -> 全连接 -> ReLU -> Q值
         action -> 全连接  /相加，偏置
         """

@@ -5,10 +5,11 @@
 @create time: 2020-04-06 15:36
 @edit time: 2020-04-06 15:37
 @FilePath: /vvlab/utils/OUProcess.py
-@desc: 
+@desc:
 """
 
 import numpy as np
+
 
 class OUProcess(object):
     """Ornstein-Uhlenbeck process"""
@@ -22,8 +23,9 @@ class OUProcess(object):
 
     def __call__(self):
         return self.noise()
-    
+
     def noise(self):
-        dx = self.theta * (self.mu - self.x) + self.sigma * np.random.randn(self.x_size)
+        dx = self.theta * (self.mu - self.x) + \
+                self.sigma * np.random.randn(self.x_size)
         self.x = self.x + dx
         return self.x
