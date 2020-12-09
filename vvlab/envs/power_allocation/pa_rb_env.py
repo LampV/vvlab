@@ -3,8 +3,8 @@
 """
 @author: Jiawei Wu
 @create time: 2020-09-25 11:20
-@edit time: 2020-12-08 18:32
-@FilePath: /PA/pa_rb_env.py
+@edit time: 2020-12-09 22:31
+@FilePath: /vvlab/vvlab/envs/power_allocation/pa_rb_env.py
 @desc: An enviornment for power allocation in d2d and BS het-nets.
 
 Path_loss is 114.8 + 36.7*np.log10(d), follow 3GPP TR 36.873, d is
@@ -45,7 +45,7 @@ class PAEnv:
     @property
     def n_actions(self):
         """return num of actions"""
-        return self.n_levels
+        return self.n_level
 
     def init_observation_space(self, kwargs):
         valid_parts = ['power', 'rate', 'fading']
@@ -81,7 +81,7 @@ class PAEnv:
         r_dev(typically 0.001km) of its DT.
 
         All positions are sotred with the infomation of the corresponding
-        device in attributes of the environment instance, self.users and
+        device in attributes of the environment instance, self.cues and
         self.devices.
         """
         random_point = utils.random_point_in_circle
@@ -373,10 +373,10 @@ class PAEnv:
         action = action.squeeze()
         # check action count
         if len(action) == self.n_t*self.m_r or len(action) == self.n_channels:
-            # if action includes authorized users, abandon
+            # if action includes authorized cues, abandon
             action = action[:self.n_t*self.m_r]
         else:
-            msg = f"length of action should be n_recvs({self.n_recvs})" \
+            msg = f"length of action should be n_channel({self.n_channel})" \
                 f" or n_t({self.n_t}), but is {len(action)}"
             raise ValueError(msg)
 

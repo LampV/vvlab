@@ -5,7 +5,7 @@ from .pa_rb_env import (
 import numpy as np
 from pathlib import Path
 
-users = {
+cues = {
     0: Node(0.1, 0, 'user'),
     1: Node(-0.1, 0, 'user'),
 }
@@ -46,10 +46,10 @@ def test_init_pos():
             (node.x - target.x) ** 2 +
             (node.y - target.y) ** 2
         )
-    # test bs users
+    # test bs cues
     assert all(
         env.r_bs <= dis(usr, env.station) <= env.R_bs
-        for usr in env.users.values()
+        for usr in env.cues.values()
     )
 
     # test devices
@@ -88,7 +88,7 @@ def test_jakes():
 def test_init_path_loss():
     """test distance, since lognormal is random"""
     env = PAEnv(n_level=4, n_t_devices=2, m_r_devices=1, m_usrs=2)
-    env.users = users
+    env.cues = cues
     env.devices = devices
     env.init_path_loss()
     distance_matrix = env.distance_matrix
@@ -133,7 +133,7 @@ def test_get_state():
         env.get_state(power, rate, fading)
     except Exception as e:
         assert e.__class__ == ValueError
-        assert e.args[0] == 'm_state should be less than n_recvs(4)'\
+        assert e.args[0] == 'm_state should be less than n_channel(4)'\
             ', but was 8'
 
     # test value
@@ -227,40 +227,40 @@ def test_seed():
         return ox + x, oy + y
     np.random.seed(123)
     target_x, target_y = random_point(env.r_bs, env.R_bs)
-    usr = env.users[0]
+    usr = env.cues[0]
     assert all((target_x == usr.x, target_y == usr.y))
 
 
 def test_action():
     env = PAEnv(n_level=10, seed=799345)
     n_actions = env.n_actions
-    n_recvs = env.n_recvs
+    n_channel = env.n_channel
     # normal
     env.reset()
     np.random.seed(799345)
-    action = np.random.randint(0, n_actions, (n_recvs, ))
+    action = np.random.randint(0, n_actions, (n_channel, ))
     s_, r, d, i = env.step(action)
     assert r == 22.252017751938354
     # only D2D actions is enough
     env.reset()
     np.random.seed(799345)
-    action = np.random.randint(0, n_actions, (n_recvs - env.m_usr, ))
+    action = np.random.randint(0, n_actions, (n_channel - env.m_usr, ))
     s_, r, d, i = env.step(action)
     assert r == 22.252017751938354
     # other action dim raises error
     env.reset()
     np.random.seed(799345)
-    action = np.random.randint(0, n_actions, (n_recvs - env.m_usr - 1, ))
+    action = np.random.randint(0, n_actions, (n_channel - env.m_usr - 1, ))
     try:
         s_, r, d, i = env.step(action)
     except ValueError as e:
-        msg = f"length of power should be n_recvs({env.n_recvs})" \
+        msg = f"length of power should be n_channel({env.n_channel})" \
             f" or n_t*m_r({env.n_t*env.m_r}), but is {len(action)}"
         assert e.args[0] == msg
     # raw
     env.reset()
     np.random.seed(799345)
-    action = np.random.randint(0, n_actions, (n_recvs, ))
+    action = np.random.randint(0, n_actions, (n_channel, ))
     raw_power = env.power_levels[action]
     s_, r, d, i = env.step(raw_power, raw=True)
     assert r == 22.252017751938354
