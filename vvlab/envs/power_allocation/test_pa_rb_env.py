@@ -1,4 +1,4 @@
-from .pa_rb_env import (
+from pa_rb_env import (
     PAEnv,
     Node
 )
@@ -6,8 +6,8 @@ import numpy as np
 from pathlib import Path
 
 cues = {
-    0: Node(0.1, 0, 'user'),
-    1: Node(-0.1, 0, 'user'),
+    0: Node(0.1, 0, 'cue'),
+    1: Node(-0.1, 0, 'cue'),
 }
 devices = {
     0: {
@@ -28,13 +28,6 @@ devices = {
 def equal(unit, target):
     tolerance = 1e-6 * np.ones_like(target)
     return (np.abs(unit - target) < tolerance).all()
-
-
-def test_init_power_level():
-    """test transmit powers"""
-    env = PAEnv(n_level=4, min_power=10, max_power=30)
-    power_levels = env.power_levels
-    assert all(power_levels == [0., 0.01, 0.1, 1.])
 
 
 def test_init_pos():
@@ -87,17 +80,19 @@ def test_jakes():
 
 def test_init_path_loss():
     """test distance, since lognormal is random"""
-    env = PAEnv(n_level=4, n_t_devices=2, m_r_devices=1, m_usrs=2)
+    env = PAEnv(n_level=4, n_pair=2, m_cue=2)
     env.cues = cues
     env.devices = devices
     env.init_path_loss()
     distance_matrix = env.distance_matrix
     target_dis = np.array(
         [
-            [0.1, 1.1, 0.6, 0.6],
-            [1.1, 0.1, 0.6, 0.6],
-            [np.sqrt(0.26), np.sqrt(0.26), 0.1, 0.1],
-            [np.sqrt(0.26), np.sqrt(0.26), 0.1, 0.1],
+            [0.1, 1.1, np.sqrt(0.26), np.sqrt(0.26), 0.5, 0.5],
+            [1.1, 0.1, np.sqrt(0.26), np.sqrt(0.26), 0.5, 0.5],
+            [0.6, 0.6, 0.1, 0.1, 0.503, 0.503],
+            [0.6, 0.6, 0.1, 0.1, 0.503, 0.503],
+            [np.sqrt(0.37), np.sqrt(0.37), 0.503, 0.2, 0.1, 0.1],
+            [np.sqrt(0.37), np.sqrt(0.37), 0.2, 0.503, 0.1, 0.1],
         ]
     )
     assert equal(distance_matrix, target_dis)
@@ -105,26 +100,37 @@ def test_init_path_loss():
 
 def test_cal_rate():
     """test rate calc"""
-    env = PAEnv(n_level=4, n_t_devices=2, m_r_devices=1, m_usrs=2)
-    power = [0.01, 0.01, 0.1, 0.1]
+    env = PAEnv(n_level=4, n_pair=2, m_cue=1)
+    power = np.array([
+        [0.01, 0],
+        [0, 0.01],
+        [0.1, 0],
+        [0, 0.1],
+    ])
     fading = np.array([
         [1e-1, 1e-3, 1e-2, 1e-2],
         [1e-3, 1e-1, 1e-2, 1e-2],
         [1e-2, 1e-2, 1e-2, 1e-2],
         [1e-2, 1e-2, 1e-2, 1e-2],
     ])
-    target_rate = np.array([0.58256799, 0.58256799, 0.87446912, 0.87446912])
-    assert equal(env.cal_rate(power, fading), target_rate)
+    rate = env.cal_rate(power, fading)
+    target_rate = np.array([1, 1, np.log2(11), np.log2(11)])
+    assert equal(rate, target_rate)
 
 
 def test_get_state():
-    env = PAEnv(n_level=4, n_t_devices=4, m_r_devices=1, m_usrs=0)
-    power = [0.01, 0.02, 0.03, 0.04]
+    env = PAEnv(n_level=4, n_pair=2, m_cue=1)
+    power = np.array([
+        [0.01, 0],
+        [0, 0.01],
+        [0.1, 0],
+        [0, 0.4],
+    ])
     fading = np.array([
-        [1.1e-1, 1.2e-3, 1.3e-2, 1.4e-2],
-        [2.1e-3, 2.2e-1, 2.3e-2, 2.4e-2],
-        [3.1e-2, 3.2e-2, 3.3e-2, 3.4e-2],
-        [4.1e-2, 4.2e-2, 4.3e-2, 4.4e-2],
+        [1e-1, 1e-3, 1e-2, 1e-2],
+        [1e-3, 1e-1, 1e-2, 1e-2],
+        [1e-2, 1e-2, 1e-2, 1e-2],
+        [1e-2, 1e-2, 1e-2, 0.5e-2],
     ])
     rate = env.cal_rate(power, fading)
     # test error
@@ -139,85 +145,87 @@ def test_get_state():
     # test value
     env.m_state = 2
     target_state = np.array(
-        [[0.01, 0.03, 0.04,
-          1.09042222, 0.51457317, 0.75950816,
-          0.16115479, 0.1728366],
-         [0.02, 0.03, 0.04,
-          1.86122244, 0.51457317, 0.75950816,
-          0.14345279, 0.14937762],
-         [0.03, 0.02, 0.04,
-          0.51457317, 1.86122244, 0.75950816,
-          0.97797369, 1.02169507],
-         [0.04, 0.02, 0.03,
-          0.75950816, 1.86122244, 0.51457317,
-          0.96683314, 0.98351188]]
+        [
+            [0.01, 0.1, 0.4,
+             1, np.log2(11), np.log2(21),
+             np.log2(1.1), np.log2(1.1)],
+            [0.01, 0.1, 0.4,
+             np.log2(1+1/4), np.log2(11), np.log2(21),
+             np.log2(1.1), np.log2(1.1)],
+        ]
     )
-    assert equal(env.get_state(power, rate, fading), target_state)
+    state = env.get_state(power, rate, fading)
+    assert equal(state, target_state)
 
 
 def test_metrics():
     # test error
     try:
-        env = PAEnv(n_level=4, n_t_devices=4, m_r_devices=1,
-                    m_usrs=0, metrics=["others"])
+        env = PAEnv(n_level=4, n_pair=2, m_cue=1, metrics=["others"])
     except ValueError as e:
         assert e.args[0] == \
             "metrics should in power, rate and fading, but is ['others']"
 
-    power = [0.01, 0.02, 0.03, 0.04]
+    power = np.array([
+        [0.01, 0],
+        [0, 0.01],
+        [0.1, 0],
+        [0, 0.4],
+    ])
     fading = np.array([
-        [1.1e-1, 1.2e-3, 1.3e-2, 1.4e-2],
-        [2.1e-3, 2.2e-1, 2.3e-2, 2.4e-2],
-        [3.1e-2, 3.2e-2, 3.3e-2, 3.4e-2],
-        [4.1e-2, 4.2e-2, 4.3e-2, 4.4e-2],
+        [1e-1, 1e-3, 1e-2, 1e-2],
+        [1e-3, 1e-1, 1e-2, 1e-2],
+        [1e-2, 1e-2, 1e-2, 1e-2],
+        [1e-2, 1e-2, 1e-2, 0.5e-2],
     ])
     # test power
     # one test is enough, case total combine metrics is tested in test_state
-    env = PAEnv(n_level=4, n_t_devices=4, m_r_devices=1, m_state=2,
-                m_usrs=0, metrics=["power"])
+    env = PAEnv(n_level=4, n_pair=2, m_cue=1, m_state=2,
+                metrics=["power"])
     rate = env.cal_rate(power, fading)
 
-    target_state = np.array(
-        [[0.01, 0.03, 0.04, ],
-         [0.02, 0.03, 0.04, ],
-         [0.03, 0.02, 0.04, ],
-         [0.04, 0.02, 0.03, ]]
-    )
+    target_state = np.array([
+        [0.01, 0.1, 0.4, ],
+        [0.01, 0.1, 0.4, ]
+    ])
     assert equal(env.get_state(power, rate, fading), target_state)
 
 
 def test_sorter():
     # test error
     try:
-        env = PAEnv(n_level=4, n_t_devices=4,
-                    m_r_devices=1, m_usrs=0, sorter="others")
+        env = PAEnv(n_level=4, n_pair=2, m_cue=1, sorter="others")
     except ValueError as e:
         assert e.args[0] == 'sorter should in power, rate'\
             ' and fading, but is others'
 
     # test power with power
-    power = [0.04, 0.03, 0.02, 0.01]
+    power = np.array([
+        [0.04, 0],
+        [0, 0.03],
+        [0.02, 0],
+        [0, 0.01],
+    ])
     fading = np.array([
         [1.1e-1, 1.2e-3, 1.3e-2, 1.4e-2],
         [2.1e-3, 2.2e-1, 2.3e-2, 2.4e-2],
         [3.1e-2, 3.2e-2, 3.3e-2, 3.4e-2],
         [4.1e-2, 4.2e-2, 4.3e-2, 4.4e-2],
     ])
-    env = PAEnv(n_level=4, n_t_devices=4, m_r_devices=1, m_state=2,
-                m_usrs=0, sorter="power", metrics=["power"])
-    rate = env.cal_rate(power, fading)
+    env = env = PAEnv(n_level=4, n_pair=2, m_cue=1, m_state=2,
+                      sorter="power", metrics=["power"])
+
+    state = env.get_state(power, env.cal_rate(power, fading), fading)
 
     target_state = np.array(
         [[0.04, 0.02, 0.03, ],
-         [0.03, 0.02, 0.04, ],
-         [0.02, 0.03, 0.04, ],
-         [0.01, 0.03, 0.04, ]]
+         [0.03, 0.02, 0.04, ]]
     )
-    assert equal(env.get_state(power, rate, fading), target_state)
+    assert equal(state, target_state)
 
 
 def test_seed():
-    env = PAEnv(n_level=4, m_usrs=1, seed=123)
+    env = PAEnv(n_level=4, m_cue=1, seed=123)
     # this is func in PAEnv to random pos
 
     def random_point(min_r, radius, ox=0, oy=0):
@@ -234,46 +242,55 @@ def test_seed():
 def test_action():
     env = PAEnv(n_level=10, seed=799345)
     n_actions = env.n_actions
-    n_channel = env.n_channel
+    n_channel, n_pair = env.n_channel, env.n_pair
     # normal
     env.reset()
     np.random.seed(799345)
     action = np.random.randint(0, n_actions, (n_channel, ))
-    s_, r, d, i = env.step(action)
-    assert r == 22.252017751938354
+    s_, r, d, i = env.step(action, unit='dBm')
+    assert r == 80.37034585049575
     # only D2D actions is enough
     env.reset()
     np.random.seed(799345)
-    action = np.random.randint(0, n_actions, (n_channel - env.m_usr, ))
-    s_, r, d, i = env.step(action)
-    assert r == 22.252017751938354
+    action = np.random.randint(0, n_actions, (n_pair, ))
+    s_, r, d, i = env.step(action, unit='dBm')
+    assert r == 80.37034585049575
     # other action dim raises error
     env.reset()
     np.random.seed(799345)
-    action = np.random.randint(0, n_actions, (n_channel - env.m_usr - 1, ))
+    action = np.random.randint(0, n_actions, (n_pair - 1, ))
     try:
-        s_, r, d, i = env.step(action)
+        s_, r, d, i = env.step(action, unit='dBm')
     except ValueError as e:
-        msg = f"length of power should be n_channel({env.n_channel})" \
-            f" or n_t*m_r({env.n_t*env.m_r}), but is {len(action)}"
+        msg = f"length of action should be n_channel({env.n_channel})" \
+            f" or n_pair({n_pair}), but is {len(action)}"
         assert e.args[0] == msg
-    # raw
+
     env.reset()
     np.random.seed(799345)
     action = np.random.randint(0, n_actions, (n_channel, ))
-    raw_power = env.power_levels[action]
-    s_, r, d, i = env.step(raw_power, raw=True)
-    assert r == 22.252017751938354
+    s_, r, d, i = env.step(action, unit='mW')
+    assert r == 76.99193541364913
+    # TODO  add test of continuous action
 
 
 def test_step():
     env = PAEnv(n_level=10)
     n_actions, n_states = env.n_actions, env.n_states
-    assert n_actions == 10
+    assert n_actions == 40
     assert n_states == 50
     env.reset()
     action = env.sample()
-    env.step(action)
+    env.step(action, unit='dBm')
+    # action = env.sample()
+    action = np.array([0,0,0,0,0,0,0,0,0])
+    env.step(action, unit='mW')
+    action = env.sample()
+    try:
+        env.step(action, unit='xx')
+    except ValueError as e:
+        msg = f"unit should in ['dBm', 'mW'], but is xx"
+        assert e.args[0] == msg
     fig: Path() = env.render()
     if fig.exists():
         fig.unlink()

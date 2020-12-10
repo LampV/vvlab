@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2020-09-25 11:20
-@edit time: 2020-12-09 22:31
+@edit time: 2020-12-10 11:40
 @FilePath: /vvlab/vvlab/envs/power_allocation/pa_rb_env.py
 @desc: An enviornment for power allocation in d2d and BS het-nets.
 
@@ -45,7 +45,7 @@ class PAEnv:
     @property
     def n_actions(self):
         """return num of actions"""
-        return self.n_level
+        return self.n_level*self.n_valid_rb
 
     def init_observation_space(self, kwargs):
         valid_parts = ['power', 'rate', 'fading']
@@ -213,7 +213,8 @@ class PAEnv:
 
         # set attributes
         self.n_level = n_level
-        self.n_t, self.m_r = n_pair, 1  # each DT has 1 DR, constantly
+        # each DT has 1 DR, constantly
+        self.n_pair, self.n_t, self.m_r = n_pair, n_pair, 1  
         self.n_bs, self.m_cue = n_bs, m_cue
 
         # each bs-cue pair has 2 channel, uplink and downlink
@@ -228,8 +229,8 @@ class PAEnv:
             print(f'PAEnv set random seed {seed}')
 
         # set power
-        _, self.bs_power = utils.convert_power(self.bs_power)
-        _, self.cue_power = utils.convert_power(self.cue_power)
+        _, self.bs_mW = utils.convert_power(self.bs_power)
+        _, self.cue_mW = utils.convert_power(self.cue_power)
         self.min_dBm, self.min_mW = utils.convert_power(self.min_power)
         self.max_dBm, self.max_mW = utils.convert_power(self.max_power)
         _, self.noise_mW = utils.convert_power(self.noise_power)
@@ -277,7 +278,7 @@ class PAEnv:
         maxC = 1000.
         sinrs = np.zeros((self.n_channel, self.n_rb))
         for i in range(self.n_rb):
-            recv_power = power[:,:,i] * fading
+            recv_power = power[:, :, i] * fading
             signal_power = recv_power.diagonal()
             total_power = recv_power.sum(axis=1)
             inter_power = total_power - signal_power
@@ -372,12 +373,12 @@ class PAEnv:
         n_t, m_r, n_bs, m_cue = self.n_t, self.m_r, self.n_bs, self.m_cue
         action = action.squeeze()
         # check action count
-        if len(action) == self.n_t*self.m_r or len(action) == self.n_channels:
+        if len(action) == self.n_t*self.m_r or len(action) == self.n_channel:
             # if action includes authorized cues, abandon
             action = action[:self.n_t*self.m_r]
         else:
             msg = f"length of action should be n_channel({self.n_channel})" \
-                f" or n_t({self.n_t}), but is {len(action)}"
+                f" or n_pair({self.n_pair}), but is {len(action)}"
             raise ValueError(msg)
 
         d2d_alloc = {}
@@ -406,10 +407,10 @@ class PAEnv:
         bs_alloc, cue_alloc = {}, {}
         for cue in range(self.m_cue):
             # channel of bs->cue use the uplink RB serial corresponding to cue
-            bs_alloc[cue] = {cue: self.bs_power}
+            bs_alloc[cue] = {cue: self.bs_mW}
             # cue->bs channel use downlink RB serial corresponding to cue
             # serial number in [m_cue, 2*m_cue) means downlink
-            cue_alloc[cue] = {cue+self.m_cue: self.cue_power}
+            cue_alloc[cue] = {cue+self.m_cue: self.cue_mW}
 
         allocation_map = {'bs': bs_alloc, 'cue': cue_alloc, 'd2d': d2d_alloc}
         self.allocation_map = allocation_map
@@ -426,7 +427,11 @@ class PAEnv:
                 allocations[n_t*m_r + n_bs*m_cue + c_index][rb] = power
         return allocations
 
-    def step(self, action, dBm=False):
+    def step(self, action, unit):
+        if unit not in {'dBm', 'mW'}:
+            msg = f"unit should in ['dBm', 'mW'], but is {unit}"
+            raise ValueError(msg)
+        dBm = unit == 'dBm'
         h_set = self.H_set[:, :, self.cur_step]
         self.fading = np.square(h_set) * self.path_loss
         self.allocations = self.decode_action(action, dBm=dBm)
