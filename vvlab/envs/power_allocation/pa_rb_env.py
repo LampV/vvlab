@@ -3,8 +3,8 @@
 """
 @author: Jiawei Wu
 @create time: 2020-09-25 11:20
-@edit time: 2020-12-13 22:24
-@FilePath: /vvlab/vvlab/envs/power_allocation/pa_rb_env.py
+@edit time: 2020-12-24 11:05
+@file: /vvlab/vvlab/envs/power_allocation/pa_rb_env.py
 @desc: An enviornment for power allocation in d2d and BS het-nets.
 
 Path_loss is 114.8 + 36.7*np.log10(d), follow 3GPP TR 36.873, d is
@@ -207,7 +207,8 @@ class PAEnv:
         self.r_dev, self.r_bs, self.R_dev, self.R_bs = 0.001, 0.01, 0.1, 1
         self.Ns = 50 if 'Ns' not in kwargs else kwargs['Ns']
         self.bs_power, self.cue_power = '10W', '1W'  # 10W and 1W, respectively
-        self.min_power, self.max_power, self.noise_power = '5dBm', '38dBm', '-114dBm'
+        self.min_power, self.max_power, self.noise_power =\
+             '5dBm', '38dBm', '-114dBm'
 
         # set attributes
         self.n_level = n_level
@@ -317,7 +318,6 @@ class PAEnv:
         Returns:
             state consisted of assigned metrics ordered by assigned sorter.
         """
-        n_t, m_r, n_bs, m_cue = self.n_t, self.m_r, self.n_bs, self.m_cue
         n_channel = self.n_channel
         m_state = self.m_state
 
@@ -336,8 +336,8 @@ class PAEnv:
                 power_last[i, 0]
         ordered_fading = fading.copy()
         for i, _ in enumerate(ordered_fading):
-            ordered_fading[i, 0], ordered_fading[i,
-                                                 i] = ordered_fading[i, i], ordered_fading[i, 0]
+            ordered_fading[i, 0], ordered_fading[i, i] = \
+                ordered_fading[i, i], ordered_fading[i, 0]
 
         sinr_norm_fading = ordered_fading[:, 1:] / \
             np.tile(ordered_fading[:, 0:1], [1, n_channel-1])
@@ -352,7 +352,8 @@ class PAEnv:
         # sorter = sinr_norm_inv
         sorter = sort_param[self.sorter]
         indices1 = np.tile(np.expand_dims(np.linspace(
-            0, n_channel-1, num=n_channel, dtype=np.int32), axis=1), [1, m_state])
+            0, n_channel-1, num=n_channel, dtype=np.int32), axis=1),
+            [1, m_state])
         indices2 = np.argsort(sorter, axis=1)[:, -m_state:]
 
         rate_last = np.hstack(

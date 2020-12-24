@@ -1,4 +1,4 @@
-from pa_rb_env import (
+from .pa_rb_env import (
     PAEnv,
     Node
 )
@@ -286,7 +286,7 @@ def test_step():
     action = env.sample()
     env.step(action, unit='dBm')
     # action = env.sample()
-    action = np.array([0,0,0,0,0,0,0,0,0])
+    action = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0])
     env.step(action, unit='mW')
     action = env.sample()
     try:
@@ -301,4 +301,3 @@ def test_step():
 
 if __name__ == '__main__':
     test_action()
-    
