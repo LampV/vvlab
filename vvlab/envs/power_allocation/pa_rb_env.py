@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2020-09-25 11:20
-@edit time: 2020-12-10 11:40
+@edit time: 2020-12-13 22:24
 @FilePath: /vvlab/vvlab/envs/power_allocation/pa_rb_env.py
 @desc: An enviornment for power allocation in d2d and BS het-nets.
 
@@ -26,7 +26,11 @@ import scipy
 import scipy.io
 import scipy.special
 
-import pa_rb_utils as utils
+from .pa_rb_utils import (
+    dist,
+    random_point_in_circle,
+    convert_power
+)
 
 Node = namedtuple('Node', 'x y type')
 
@@ -84,7 +88,7 @@ class PAEnv:
         device in attributes of the environment instance, self.cues and
         self.devices.
         """
-        random_point = utils.random_point_in_circle
+        random_point = random_point_in_circle
 
         r_bs, R_bs, r_dev, R_dev = self.r_bs, self.R_bs, self.r_dev, self.R_dev
         # init CUE positions
@@ -112,46 +116,29 @@ class PAEnv:
         Jakes model is a simulation of the rayleigh channel, which represents
         the small-scale fading.
 
-        Each Rx corresponding to a (downlink) channel, each channel is a
-        source of interference to other channels. Consdering the channel
-        itself, we get a matrix representing the small-scale fading. Note that
-        the interference is decided on the position of Tx and Rx, so that the
-        m interferences make by m channels from the same Tx have the same
-        fading ratio.
-
         Args:
             fd: Doppler frequency, default 10(Hz)
             Ts: sampling period, default 20 * 1e-3(s)
             Ns: number of samples, default 50
         """
         randn = np.random.randn
-
-        n_t, m_r, n_bs, m_cue = self.n_t, self.m_r, 1, self.m_cue
-        n_channel = self.n_channel
-
-        def foo(pho, n, m):
-            # each channel have n_channel h to other channels(include self)
-            # each Tx send m signal, the number of this kind of Tx is n
-            _h = np.sqrt((1.-pho**2)*0.5*(randn(n_channel, n)**2
-                                          + randn(n_channel, n)**2))
-            return np.kron(_h, np.ones((1, m), dtype=np.int32))
+        n_tx, n_rx = self.n_tx, self.n_rx
 
         def calc_h_set(pho):
-            # calculate next sample of Jakes model.
-            return np.concatenate((foo(pho, n_t, m_r),
-                                   foo(pho, n_bs, m_cue),
-                                   foo(pho, m_cue, n_bs)
-                                   ), axis=1)
+            _h = np.sqrt((1.-pho**2)*0.5*(randn(n_tx, n_rx)**2
+                                          + randn(n_tx, n_rx)**2))
+            return _h
+
         # recurrence generate all Ns samples of Jakes.
         pho = np.float32(scipy.special.k0(2*np.pi*fd*Ts))
-        H_set = np.zeros([n_channel, n_channel, int(Ns)], dtype=np.float32)
+        H_set = np.zeros([n_tx, n_rx, int(Ns)], dtype=np.float32)
         H_set[:, :, 0] = calc_h_set(0)
         for i in range(1, int(Ns)):
             H_set[:, :, i] = H_set[:, :, i-1]*pho + calc_h_set(pho)
 
         self.H_set = H_set
 
-    def init_path_loss(self, slope=0):
+    def init_path_loss(self):
         """Initialize paht loss( large-scale fading).
 
         The large-scale fading is related to distance. An experimental
@@ -160,46 +147,57 @@ class PAEnv:
         When fc=3.5GHz and hUT=1.5m, the formula can be simplified to:
         L = 114.8 + 36.7*log10(d) + 10*log10(z),
         where z is a lognormal random variable.
-
-        As with the small-scale fading, each the n Rxs have one siginal and
-        (n-1) interferences.  Using a n*n matrix to record the path loss, we
-        notice that the interference from one Tx has same large-scale fading,
-        Consistent with small-scale fading.
         """
-        n_t, m_r, n_bs, m_cue = self.n_t, self.m_r, self.n_bs, self.m_cue
-        n_channel = self.n_channel
+        n_tx, n_rx = self.n_tx, self.n_rx
 
         # calculate distance matrix from initialized positions.
-        distance_matrix = np.zeros((n_channel, n_channel))
+        distance_matrix = np.zeros((n_tx, n_rx))
 
         devices = self.devices
         rxs = list(itertools.chain(
             (dr for c in devices.values() for dr in c['r_devices'].values()),
             (cue for cue in self.cues.values()),
-            (self.station for _ in self.cues)
+            (self.station, )
         ))
 
         txs = list(itertools.chain(
             (c['t_device'] for c in devices.values() for _ in c['r_devices']),
-            (self.station for _ in self.cues),
+            (self.station, ),
             (cue for cue in self.cues.values())
         ))
 
-        # TODO  检测distance和h_set的轴是否一致
         # distance matrix
         distance_matrix = np.array([
-            [utils.dist(rx, tx) for rx in rxs]
+            [dist(rx, tx) for rx in rxs]
             for tx in txs])
 
         self.distance_matrix = distance_matrix
 
         std = 4.    # std of shadow fading corresponding to lognormal
-        lognormal = np.random.lognormal(size=(n_channel, n_channel), sigma=std)
+        lognormal = np.random.lognormal(size=(n_tx, n_rx), sigma=std)
 
         # micro
         path_loss = lognormal * \
             pow(10., -(114.8 + 36.7*np.log10(distance_matrix))/10.)
         self.path_loss = path_loss
+
+    def init_fading(self):
+        n_t, m_r, n_bs, m_cue = self.n_t, self.m_r, self.n_bs, self.m_cue
+        n_tx, n_rx, n_channel = self.n_tx, self.n_rx, self.n_channel
+        # 左乘行变换，复制第n_t行（BS作为Tx的行）
+        cl = np.eye(n_channel, n_rx)
+        for i in reversed(range(n_t, n_channel)):
+            cl[i] = cl[max(i-m_cue+1, n_t)]
+        # 右乘列变换，复制最后一列（BS作为Rx的列）
+        cr = np.eye(n_tx, n_channel)
+        cr[-1][n_tx:] = 1
+
+        self.fading_set = {}
+        for cur_step in range(self.Ns):
+            h_set = self.H_set[:, :, cur_step]
+            fading = np.square(h_set) * self.path_loss
+            fading = np.matmul(np.matmul(cl, fading), cr)
+            self.fading_set[cur_step] = fading
 
     def __init__(self, n_level,
                  n_pair=9, n_bs=1, m_cue=4, **kwargs):
@@ -214,10 +212,12 @@ class PAEnv:
         # set attributes
         self.n_level = n_level
         # each DT has 1 DR, constantly
-        self.n_pair, self.n_t, self.m_r = n_pair, n_pair, 1  
+        self.n_pair, self.n_t, self.m_r = n_pair, n_pair, 1
         self.n_bs, self.m_cue = n_bs, m_cue
 
         # each bs-cue pair has 2 channel, uplink and downlink
+        self.n_tx = self.n_t + self.n_bs + self.n_bs * self.m_cue
+        self.n_rx = self.n_t * self.m_r + self.n_bs * self.m_cue + self.n_bs
         self.n_channel = self.n_t * self.m_r + self.n_bs * self.m_cue * 2
 
         self.__dict__.update(kwargs)
@@ -229,11 +229,11 @@ class PAEnv:
             print(f'PAEnv set random seed {seed}')
 
         # set power
-        _, self.bs_mW = utils.convert_power(self.bs_power)
-        _, self.cue_mW = utils.convert_power(self.cue_power)
-        self.min_dBm, self.min_mW = utils.convert_power(self.min_power)
-        self.max_dBm, self.max_mW = utils.convert_power(self.max_power)
-        _, self.noise_mW = utils.convert_power(self.noise_power)
+        _, self.bs_mW = convert_power(self.bs_power)
+        _, self.cue_mW = convert_power(self.cue_power)
+        self.min_dBm, self.min_mW = convert_power(self.min_power)
+        self.max_dBm, self.max_mW = convert_power(self.max_power)
+        _, self.noise_mW = convert_power(self.noise_power)
 
         # set rb
         self.n_rb = 2 * self.n_bs * self.m_cue
@@ -246,18 +246,19 @@ class PAEnv:
         self.init_observation_space(kwargs)
         self.init_pos()  # init recv pos
         self.init_jakes(Ns=self.Ns)  # init rayleigh loss using jakes model
-        self.init_path_loss(slope=0)  # init path loss
+        self.init_path_loss()  # init path loss
+        self.init_fading()
         self.cur_step = 0
 
     def reset(self):
         self.cur_step = 0
-        h_set = self.H_set[:, :, self.cur_step]
-        self.fading = np.square(h_set) * self.path_loss
+        self.fading = self.fading_set[self.cur_step]
         return np.random.random((self.n_t * self.m_r, self.n_states))
 
     def sample(self):
         sample_action = np.random.randint(
-            0, self.n_level*self.n_valid_rb, self.n_t * self.m_r).astype(np.int32)
+            0, self.n_level*self.n_valid_rb, self.n_t * self.m_r)\
+            .astype(np.int32)
         return sample_action
 
     def cal_rate(self, power, fading):
@@ -274,13 +275,13 @@ class PAEnv:
         Returns:
             a vector of channel rate.
         """
-        power = power * np.ones((self.n_channel, self.n_channel, self.n_rb))
+        power = np.tile(np.expand_dims(power, axis=1), (1, self.n_channel, 1))
         maxC = 1000.
         sinrs = np.zeros((self.n_channel, self.n_rb))
         for i in range(self.n_rb):
             recv_power = power[:, :, i] * fading
             signal_power = recv_power.diagonal()
-            total_power = recv_power.sum(axis=1)
+            total_power = recv_power.sum(axis=0)
             inter_power = total_power - signal_power
             # if no signal, no interference
             _sinr = signal_power / (inter_power + self.noise_mW)
@@ -396,7 +397,7 @@ class PAEnv:
                 else:
                     power = (self.max_mW - self.min_mW) / self.n_level * level
                     power = str(power)+'mW'
-                alloc = {rb: utils.convert_power(power).mW}
+                alloc = {rb: convert_power(power).mW}
             else:
                 msg = f"Action shape {len(action)} is not supported."
                 raise ValueError(msg)
@@ -432,10 +433,9 @@ class PAEnv:
             msg = f"unit should in ['dBm', 'mW'], but is {unit}"
             raise ValueError(msg)
         dBm = unit == 'dBm'
-        h_set = self.H_set[:, :, self.cur_step]
-        self.fading = np.square(h_set) * self.path_loss
         self.allocations = self.decode_action(action, dBm=dBm)
 
+        self.fading = self.fading_set[self.cur_step]
         rate = self.cal_rate(self.allocations, self.fading)
 
         state = self.get_state(self.allocations, rate, self.fading)
@@ -491,8 +491,8 @@ class PAEnv:
 
 
 if __name__ == '__main__':
-    env = PAEnv(10, n_pair=9, m_cue=4)
+    env = PAEnv(10)
     env.reset()
-    ret = env.step(env.sample())
+    ret = env.step(env.sample(), unit='dBm')
     env.render()
     print(ret)

@@ -5,6 +5,8 @@ from pa_rb_env import (
 import numpy as np
 from pathlib import Path
 
+log2 = np.log2
+
 cues = {
     0: Node(0.1, 0, 'cue'),
     1: Node(-0.1, 0, 'cue'),
@@ -87,12 +89,11 @@ def test_init_path_loss():
     distance_matrix = env.distance_matrix
     target_dis = np.array(
         [
-            [0.1, 1.1, np.sqrt(0.26), np.sqrt(0.26), 0.5, 0.5],
-            [1.1, 0.1, np.sqrt(0.26), np.sqrt(0.26), 0.5, 0.5],
-            [0.6, 0.6, 0.1, 0.1, 0.503, 0.503],
-            [0.6, 0.6, 0.1, 0.1, 0.503, 0.503],
-            [np.sqrt(0.37), np.sqrt(0.37), 0.503, 0.2, 0.1, 0.1],
-            [np.sqrt(0.37), np.sqrt(0.37), 0.2, 0.503, 0.1, 0.1],
+            [0.1, 1.1, np.sqrt(0.26), np.sqrt(0.26), 0.5],
+            [1.1, 0.1, np.sqrt(0.26), np.sqrt(0.26), 0.5],
+            [0.6, 0.6, 0.1, 0.1, 0.503],
+            [np.sqrt(0.37), np.sqrt(0.37), 0.503, 0.2, 0.1],
+            [np.sqrt(0.37), np.sqrt(0.37), 0.2, 0.503, 0.1],
         ]
     )
     assert equal(distance_matrix, target_dis)
@@ -108,13 +109,15 @@ def test_cal_rate():
         [0, 0.1],
     ])
     fading = np.array([
-        [1e-1, 1e-3, 1e-2, 1e-2],
-        [1e-3, 1e-1, 1e-2, 1e-2],
-        [1e-2, 1e-2, 1e-2, 1e-2],
-        [1e-2, 1e-2, 1e-2, 1e-2],
+        [1.1e-2, 1.2e-2, 1.3e-2, 1.4e-2],
+        [2.1e-2, 2.2e-2, 2.3e-2, 2.4e-2],
+        [3.1e-2, 3.2e-2, 3.3e-2, 3.4e-2],
+        [4.1e-2, 4.2e-2, 4.3e-2, 4.4e-2],
     ])
     rate = env.cal_rate(power, fading)
-    target_rate = np.array([1, 1, np.log2(11), np.log2(11)])
+    target_rate = np.array([
+        log2(1+1.1/31), log2(1+2.2/42), log2(1+33/1.3), log2(1+44/2.4)
+    ])
     assert equal(rate, target_rate)
 
 
@@ -147,11 +150,11 @@ def test_get_state():
     target_state = np.array(
         [
             [0.01, 0.1, 0.4,
-             1, np.log2(11), np.log2(21),
-             np.log2(1.1), np.log2(1.1)],
+             1, log2(11), log2(21),
+             log2(1.1), log2(1.1)],
             [0.01, 0.1, 0.4,
-             np.log2(1+1/4), np.log2(11), np.log2(21),
-             np.log2(1.1), np.log2(1.1)],
+             log2(1+1/4), log2(11), log2(21),
+             log2(1.1), log2(1.1)],
         ]
     )
     state = env.get_state(power, rate, fading)
@@ -248,13 +251,13 @@ def test_action():
     np.random.seed(799345)
     action = np.random.randint(0, n_actions, (n_channel, ))
     s_, r, d, i = env.step(action, unit='dBm')
-    assert r == 80.37034585049575
+    assert r == 59.70076293165634
     # only D2D actions is enough
     env.reset()
     np.random.seed(799345)
     action = np.random.randint(0, n_actions, (n_pair, ))
     s_, r, d, i = env.step(action, unit='dBm')
-    assert r == 80.37034585049575
+    assert r == 59.70076293165634
     # other action dim raises error
     env.reset()
     np.random.seed(799345)
@@ -270,7 +273,7 @@ def test_action():
     np.random.seed(799345)
     action = np.random.randint(0, n_actions, (n_channel, ))
     s_, r, d, i = env.step(action, unit='mW')
-    assert r == 76.99193541364913
+    assert r == 59.379000728351556
     # TODO  add test of continuous action
 
 
@@ -294,3 +297,8 @@ def test_step():
     fig: Path() = env.render()
     if fig.exists():
         fig.unlink()
+
+
+if __name__ == '__main__':
+    test_action()
+    
