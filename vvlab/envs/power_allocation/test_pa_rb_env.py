@@ -99,8 +99,8 @@ def test_init_path_loss():
     assert equal(distance_matrix, target_dis)
 
 
-def test_cal_rate():
-    """test rate calc"""
+def test_get_recv_powers():
+    """test get_recv_powers"""
     env = PAEnv(n_level=4, n_pair=2, m_cue=1)
     power = np.array([
         [0.01, 0],
@@ -108,123 +108,153 @@ def test_cal_rate():
         [0.1, 0],
         [0, 0.1],
     ])
+    emit_powers = np.tile(np.expand_dims(power, axis=1),
+                          (1, env.n_channel, 1))
     fading = np.array([
         [1.1e-2, 1.2e-2, 1.3e-2, 1.4e-2],
         [2.1e-2, 2.2e-2, 2.3e-2, 2.4e-2],
         [3.1e-2, 3.2e-2, 3.3e-2, 3.4e-2],
         [4.1e-2, 4.2e-2, 4.3e-2, 4.4e-2],
     ])
-    rate = env.cal_rate(power, fading)
-    target_rate = np.array([
+    recv_powers = env.get_recv_powers(emit_powers, fading)
+    target_recv_powers = np.array([
+        [[1.1e-4, 0], [1.2e-4, 0], [1.3e-4, 0], [1.4e-4, 0]],
+        [[0, 2.1e-4], [0, 2.2e-4], [0, 2.3e-4], [0, 2.4e-4]],
+        [[3.1e-3, 0], [3.2e-3, 0], [3.3e-3, 0], [3.4e-3, 0]],
+        [[0, 4.1e-3], [0, 4.2e-3], [0, 4.3e-3], [0, 4.4e-3]],
+    ])
+    assert equal(recv_powers, target_recv_powers)
+
+
+def test_get_rates():
+    """test get_rates"""
+    env = PAEnv(n_level=4, n_pair=2, m_cue=1)
+    recv_powers = np.array([
+        [[1.1e-4, 0], [1.2e-4, 0], [1.3e-4, 0], [1.4e-4, 0]],
+        [[0, 2.1e-4], [0, 2.2e-4], [0, 2.3e-4], [0, 2.4e-4]],
+        [[3.1e-3, 0], [3.2e-3, 0], [3.3e-3, 0], [3.4e-3, 0]],
+        [[0, 4.1e-3], [0, 4.2e-3], [0, 4.3e-3], [0, 4.4e-3]],
+    ])
+    rates = env.get_rates(recv_powers)
+    _rate = np.array([
         log2(1+1.1/31), log2(1+2.2/42), log2(1+33/1.3), log2(1+44/2.4)
     ])
-    assert equal(rate, target_rate)
+    target_rates = (_rate * np.ones((env.n_channel, env.n_channel))).T
+    assert equal(rates, target_rates)
 
 
-def test_get_state():
-    env = PAEnv(n_level=4, n_pair=2, m_cue=1)
+def test_get_indices():
+    """test get_indices"""
+    env = PAEnv(n_level=4, n_pair=2, m_cue=1, sorter="recv_power",
+                m_state=2)
     power = np.array([
         [0.01, 0],
         [0, 0.01],
         [0.1, 0],
-        [0, 0.4],
+        [0, 0.1],
     ])
+    emit_powers = np.tile(np.expand_dims(power, axis=1),
+                          (1, env.n_channel, 1))
     fading = np.array([
-        [1e-1, 1e-3, 1e-2, 1e-2],
-        [1e-3, 1e-1, 1e-2, 1e-2],
-        [1e-2, 1e-2, 1e-2, 1e-2],
-        [1e-2, 1e-2, 1e-2, 0.5e-2],
-    ])
-    rate = env.cal_rate(power, fading)
-    # test error
-    try:
-        env.m_state = 8
-        env.get_state(power, rate, fading)
-    except Exception as e:
-        assert e.__class__ == ValueError
-        assert e.args[0] == 'm_state should be less than n_channel(4)'\
-            ', but was 8'
-
-    # test value
-    env.m_state = 2
-    target_state = np.array(
-        [
-            [0.01, 0.1, 0.4,
-             1, log2(11), log2(21),
-             log2(1.1), log2(1.1)],
-            [0.01, 0.1, 0.4,
-             log2(1+1/4), log2(11), log2(21),
-             log2(1.1), log2(1.1)],
-        ]
-    )
-    state = env.get_state(power, rate, fading)
-    assert equal(state, target_state)
-
-
-def test_metrics():
-    # test error
-    try:
-        env = PAEnv(n_level=4, n_pair=2, m_cue=1, metrics=["others"])
-    except ValueError as e:
-        assert e.args[0] == \
-            "metrics should in power, rate and fading, but is ['others']"
-
-    power = np.array([
-        [0.01, 0],
-        [0, 0.01],
-        [0.1, 0],
-        [0, 0.4],
-    ])
-    fading = np.array([
-        [1e-1, 1e-3, 1e-2, 1e-2],
-        [1e-3, 1e-1, 1e-2, 1e-2],
-        [1e-2, 1e-2, 1e-2, 1e-2],
-        [1e-2, 1e-2, 1e-2, 0.5e-2],
-    ])
-    # test power
-    # one test is enough, case total combine metrics is tested in test_state
-    env = PAEnv(n_level=4, n_pair=2, m_cue=1, m_state=2,
-                metrics=["power"])
-    rate = env.cal_rate(power, fading)
-
-    target_state = np.array([
-        [0.01, 0.1, 0.4, ],
-        [0.01, 0.1, 0.4, ]
-    ])
-    assert equal(env.get_state(power, rate, fading), target_state)
-
-
-def test_sorter():
-    # test error
-    try:
-        env = PAEnv(n_level=4, n_pair=2, m_cue=1, sorter="others")
-    except ValueError as e:
-        assert e.args[0] == 'sorter should in power, rate'\
-            ' and fading, but is others'
-
-    # test power with power
-    power = np.array([
-        [0.04, 0],
-        [0, 0.03],
-        [0.02, 0],
-        [0, 0.01],
-    ])
-    fading = np.array([
-        [1.1e-1, 1.2e-3, 1.3e-2, 1.4e-2],
-        [2.1e-3, 2.2e-1, 2.3e-2, 2.4e-2],
+        [1.1e-2, 1.2e-2, 1.3e-2, 1.4e-2],
+        [2.1e-2, 2.2e-2, 2.3e-2, 2.4e-2],
         [3.1e-2, 3.2e-2, 3.3e-2, 3.4e-2],
         [4.1e-2, 4.2e-2, 4.3e-2, 4.4e-2],
     ])
-    env = env = PAEnv(n_level=4, n_pair=2, m_cue=1, m_state=2,
-                      sorter="power", metrics=["power"])
+    recv_powers = env.get_recv_powers(emit_powers, fading)
+    rates = env.get_rates(recv_powers)
+    metrics = emit_powers, recv_powers, rates
+    # rx_indice don't need test
+    tx_indice, rx_indice = env.get_indices(*metrics)
+    target_tx_indice = np.array([
+        [3, 3, 3, 2],
+        [0, 1, 2, 3]
+    ])
+    assert equal(tx_indice, target_tx_indice)
 
-    state = env.get_state(power, env.cal_rate(power, fading), fading)
 
-    target_state = np.array(
-        [[0.04, 0.02, 0.03, ],
-         [0.03, 0.02, 0.04, ]]
-    )
-    assert equal(state, target_state)
+def test_get_rewards():
+    env = PAEnv(n_level=4, n_pair=2, m_cue=1, sorter="recv_power",
+                m_state=2)
+    power = np.array([
+        [0.01, 0],
+        [0, 0.01],
+        [0.1, 0],
+        [0, 0.1],
+    ])
+    emit_powers = np.tile(np.expand_dims(power, axis=1),
+                          (1, env.n_channel, 1))
+    fading = np.array([
+        [1.1e-2, 1.2e-2, 1.3e-2, 1.4e-2],
+        [2.1e-2, 2.2e-2, 2.3e-2, 2.4e-2],
+        [3.1e-2, 3.2e-2, 3.3e-2, 3.4e-2],
+        [4.1e-2, 4.2e-2, 4.3e-2, 4.4e-2],
+    ])
+    recv_powers = env.get_recv_powers(emit_powers, fading)
+    rates = env.get_rates(recv_powers)
+
+    metrics = emit_powers, recv_powers, rates
+    indices = env.get_indices(*metrics)
+    rewards = env.get_rewards(rates, indices)
+    target_rewards = np.array([
+        log2(1+1.1/31) + log2(1+44/2.4),
+        log2(1+2.2/42) + log2(1+44/2.4),
+        log2(1+33/1.3) + log2(1+44/2.4),
+        log2(1+44/2.4) + log2(1+33/1.3),
+    ])[:2]
+
+    assert equal(rewards, target_rewards)
+
+
+def test_get_states():
+    # test m_state
+    env = PAEnv(n_level=4, n_pair=2, m_cue=1,
+                m_state=8)
+    assert env.m_state == 4
+
+    env = PAEnv(n_level=4, n_pair=2, m_cue=1,
+                m_state=2)
+    power = np.array([
+        [0.01, 0],
+        [0, 0.01],
+        [0.1, 0],
+        [0, 0.1],
+    ])
+    emit_powers = np.tile(np.expand_dims(power, axis=1),
+                          (1, env.n_channel, 1))
+    fading = np.array([
+        [1.1e-2, 1.2e-2, 1.3e-2, 1.4e-2],
+        [2.1e-2, 2.2e-2, 2.3e-2, 2.4e-2],
+        [3.1e-2, 3.2e-2, 3.3e-2, 3.4e-2],
+        [4.1e-2, 4.2e-2, 4.3e-2, 4.4e-2],
+    ])
+    recv_powers = env.get_recv_powers(emit_powers, fading)
+    rates = env.get_rates(recv_powers)
+
+    metrics = emit_powers, recv_powers, rates
+    indices = env.get_indices(*metrics)
+    states = env.get_states(*metrics, indices=indices)
+    _recv = np.array([
+        [[1.1e-4, 0], [1.2e-4, 0], [1.3e-4, 0], [1.4e-4, 0]],
+        [[0, 2.1e-4], [0, 2.2e-4], [0, 2.3e-4], [0, 2.4e-4]],
+        [[3.1e-3, 0], [3.2e-3, 0], [3.3e-3, 0], [3.4e-3, 0]],
+        [[0, 4.1e-3], [0, 4.2e-3], [0, 4.3e-3], [0, 4.4e-3]],
+    ])
+    _rate = np.array([
+        log2(1+1.1/31), log2(1+2.2/42), log2(1+33/1.3), log2(1+44/2.4)
+    ])
+    target_states = np.array([
+        np.concatenate([power[3],power[0],_recv[3][0],_recv[0][0],[_rate[3], _rate[0]]]),
+        np.concatenate([power[3],power[1],_recv[3][1],_recv[1][1],[_rate[3], _rate[1]]]),
+        np.concatenate([power[3],power[2],_recv[3][2],_recv[2][2],[_rate[3], _rate[2]]]),
+        np.concatenate([power[2],power[3],_recv[2][3],_recv[3][3],[_rate[2], _rate[3]]]),
+    ])[:2]
+    assert equal(states, target_states)
+
+
+def test_sorter():
+    # now only recv_power can be sorter
+    pass
 
 
 def test_seed():
@@ -251,13 +281,13 @@ def test_action():
     np.random.seed(799345)
     action = np.random.randint(0, n_actions, (n_channel, ))
     s_, r, d, i = env.step(action, unit='dBm')
-    assert r == 59.70076293165634
+    assert i['rate'] == 3.511809584215079
     # only D2D actions is enough
     env.reset()
     np.random.seed(799345)
     action = np.random.randint(0, n_actions, (n_pair, ))
     s_, r, d, i = env.step(action, unit='dBm')
-    assert r == 59.70076293165634
+    assert i['rate'] == 3.511809584215079
     # other action dim raises error
     env.reset()
     np.random.seed(799345)
@@ -273,7 +303,7 @@ def test_action():
     np.random.seed(799345)
     action = np.random.randint(0, n_actions, (n_channel, ))
     s_, r, d, i = env.step(action, unit='mW')
-    assert r == 59.379000728351556
+    assert i['rate'] == 3.4928823957853856
     # TODO  add test of continuous action
 
 
@@ -281,7 +311,7 @@ def test_step():
     env = PAEnv(n_level=10)
     n_actions, n_states = env.n_actions, env.n_states
     assert n_actions == 40
-    assert n_states == 50
+    assert n_states == 272
     env.reset()
     action = env.sample()
     env.step(action, unit='dBm')

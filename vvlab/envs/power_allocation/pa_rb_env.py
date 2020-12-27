@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2020-09-25 11:20
-@edit time: 2020-12-24 11:05
+@edit time: 2020-12-27 22:09
 @file: /vvlab/vvlab/envs/power_allocation/pa_rb_env.py
 @desc: An enviornment for power allocation in d2d and BS het-nets.
 
@@ -40,9 +40,9 @@ class PAEnv:
     def n_states(self):
         """return dim of state"""
         part_len = {
-            'power': self.m_state + 1,
-            'rate': self.m_state + 1,
-            'fading': self.m_state
+            'emit_power': self.m_state * self.n_rb,
+            'recv_power': self.m_state * self.n_rb,
+            'rate': self.m_state
         }
         return sum(part_len[metric] for metric in self.metrics)
 
@@ -52,18 +52,20 @@ class PAEnv:
         return self.n_level*self.n_valid_rb
 
     def init_observation_space(self, kwargs):
-        valid_parts = ['power', 'rate', 'fading']
+        valid_parts = ['emit_power', 'recv_power', 'rate']
         # default using power
-        sorter = kwargs['sorter'] if 'sorter' in kwargs else 'power'
+        sorter = kwargs['sorter'] if 'sorter' in kwargs else 'recv_power'
         # default using all
         metrics = kwargs['metrics'] if 'metrics' in kwargs else valid_parts
 
         # check data
         if sorter not in valid_parts:
-            msg = f'sorter should in power, rate and fading, but is {sorter}'
+            msg = f'sorter should in emit_power, recv_power and rate,'
+            f' but is {sorter}'
             raise ValueError(msg)
         if any(metric not in valid_parts for metric in metrics):
-            msg = f'metrics should in power, rate and fading, but is {metrics}'
+            msg = f'metrics should in emit_power, recv_power and rate,'
+            f' but is {metrics}'
             raise ValueError(msg)
 
         # set to instance attr
@@ -207,8 +209,7 @@ class PAEnv:
         self.r_dev, self.r_bs, self.R_dev, self.R_bs = 0.001, 0.01, 0.1, 1
         self.Ns = 50 if 'Ns' not in kwargs else kwargs['Ns']
         self.bs_power, self.cue_power = '10W', '1W'  # 10W and 1W, respectively
-        self.min_power, self.max_power, self.noise_power =\
-             '5dBm', '38dBm', '-114dBm'
+        self.min_power, self.max_power, self.noise_power = '5dBm', '38dBm', '-114dBm'
 
         # set attributes
         self.n_level = n_level
@@ -221,13 +222,18 @@ class PAEnv:
         self.n_rx = self.n_t * self.m_r + self.n_bs * self.m_cue + self.n_bs
         self.n_channel = self.n_t * self.m_r + self.n_bs * self.m_cue * 2
 
-        self.__dict__.update(kwargs)
-
         # set random seed
         if 'seed' in kwargs:
-            seed = kwargs['seed'] if kwargs['seed'] > 1 else 799345
-            np.random.seed(seed)
-            print(f'PAEnv set random seed {seed}')
+            _seed = kwargs['seed'] if kwargs['seed'] > 1 else 799345
+            np.random.seed(_seed)
+            kwargs.pop('seed')
+            print(f'PAEnv set random seed {_seed}')
+
+        self.__dict__.update(kwargs)
+
+        # check m_state
+        self.m_state = min(self.n_channel, self.m_state)
+        print(f"m_state: {self.m_state}")
 
         # set power
         _, self.bs_mW = convert_power(self.bs_power)
@@ -262,113 +268,93 @@ class PAEnv:
             .astype(np.int32)
         return sample_action
 
-    def cal_rate(self, power, fading):
-        """Calculate channel rates.
+    def get_recv_powers(self, emit_powers, fading):
+        n_channel, n_rb = self.n_channel, self.n_rb
+        recv_powers = np.zeros((n_channel, n_channel, n_rb))
+        for i in range(n_rb):
+            recv_power = emit_powers[:, :, i] * fading
+            recv_powers[:, :, i] = recv_power
+        return recv_powers
 
-        The receive power equals to emitting power times channel gain.
-        The SINR can be calculated from all receive power. The channel rate
-        can be infered by Shannon's formula.
-
-        Args:
-            power: emitting power.
-            fading: channel gain infomation of current time slot.
-
-        Returns:
-            a vector of channel rate.
-        """
-        power = np.tile(np.expand_dims(power, axis=1), (1, self.n_channel, 1))
+    def get_rates(self, recv_powers):
         maxC = 1000.
-        sinrs = np.zeros((self.n_channel, self.n_rb))
-        for i in range(self.n_rb):
-            recv_power = power[:, :, i] * fading
-            signal_power = recv_power.diagonal()
+        n_channel, n_rb = self.n_channel, self.n_rb
+        sinrs = np.zeros((n_channel, n_rb))
+        for i in range(n_rb):
+            recv_power = recv_powers[:, :, i]
             total_power = recv_power.sum(axis=0)
+            signal_power = recv_power.diagonal()
             inter_power = total_power - signal_power
-            # if no signal, no interference
             _sinr = signal_power / (inter_power + self.noise_mW)
             sinrs[:, i] = np.clip(_sinr, 0, maxC)
-
         sinr = sinrs.sum(axis=1)
         rate = np.log(1. + sinr)/np.log(2)
+        rates = rate * np.ones([n_channel, n_channel])
+        return rates.T  # make rate as a column
 
-        return rate
-
-    def get_state(self, power, rate, fading):
-        """Calculate and constitute the state.
-
-        The state on each receiving end consists of the following components:
-        1. channel gain of the Rx, includes siginal and interferences
-        2. Tx emitting power of all channel
-        3. rate of all channel
-
-        The m_state channels (except itself) are selected by the sorter
-        assigned when initializing the observation space, default the
-        emitting power.
-        So there are m_state interferance channel gain, m_state Tx emitting
-        power and m_state channel rate. Notice that Tx emitting power and
-        channel rate should also include the infomation of this device.
-        Which parts of the metrics will consist the state is assigned when
-        initializing the observation space.
-
-        Args:
-            power: vector of emitting power of the last time slot.
-            rate: vector of channel rate of the last time slot.
-            fading: matrix of all channel gain of the last time slot.
-
-        Returns:
-            state consisted of assigned metrics ordered by assigned sorter.
-        """
-        n_channel = self.n_channel
+    def get_indices(self, *metrics):
+        emit_powers, recv_powers, rates = metrics
         m_state = self.m_state
+        # sort by recv_powers
+        sort_param = {
+            'recv_power': recv_powers.sum(axis=2),
+        }
+        sorter = sort_param[self.sorter]
+        sorter[sorter == sorter.diagonal()] = float(
+            'inf')    # make sure diagonal selected
+        rx_indices = np.tile(np.expand_dims(np.arange(
+            0, self.n_channel, dtype=np.int32), axis=0), [m_state, 1])
+        tx_indices = np.argsort(sorter, axis=0)[-m_state:, :]
+        return tx_indices, rx_indices
 
-        if m_state > n_channel:
-            msg = f"m_state should be less than n_channel({n_channel})" \
-                f", but was {m_state}"
+    def get_rewards(self, rates, indices):
+        valid_rates = rates[indices]
+        rewards = valid_rates.sum(axis=0)
+        return rewards[:self.n_pair]
+
+    def get_states(self, *metrics, indices):
+        emit_powers, recv_powers, rates = metrics
+        # metrics
+        # metrics and indices use dim_0 for tx and dim_1 for rx
+        # states need dim_0 to be rx
+        metric_param = {
+            'emit_power': np.swapaxes(emit_powers[indices], 0, 1).
+            reshape(self.n_channel, -1),
+            'recv_power': np.swapaxes(recv_powers[indices], 0, 1).
+            reshape(self.n_channel, -1),
+            'rate': np.swapaxes(rates[indices], 0, 1),
+        }
+
+        state = np.hstack([metric_param[metric] for metric in self.metrics])
+        return state[:self.n_pair]
+
+    def step(self, action, unit):
+        if unit not in {'dBm', 'mW'}:
+            msg = f"unit should in ['dBm', 'mW'], but is {unit}"
             raise ValueError(msg)
 
-        # 将信号项提前
-        rate_last = rate * np.ones([n_channel, n_channel])
-        for i, _ in enumerate(rate_last):
-            rate_last[i, 0], rate_last[i, i] = rate_last[i, i], rate_last[i, 0]
-        power_last = power.sum(axis=1) * np.ones([n_channel, n_channel])
-        for i, _ in enumerate(power_last):
-            power_last[i, 0], power_last[i, i] = power_last[i, i], \
-                power_last[i, 0]
-        ordered_fading = fading.copy()
-        for i, _ in enumerate(ordered_fading):
-            ordered_fading[i, 0], ordered_fading[i, i] = \
-                ordered_fading[i, i], ordered_fading[i, 0]
+        power = self.decode_action(action, dBm=unit == 'dBm')
+        csi = self.fading_set[self.cur_step]
 
-        sinr_norm_fading = ordered_fading[:, 1:] / \
-            np.tile(ordered_fading[:, 0:1], [1, n_channel-1])
-        sinr_norm_fading = np.log2(1. + sinr_norm_fading)
+        emit_powers = np.tile(np.expand_dims(power, axis=1),
+                              (1, self.n_channel, 1))
+        recv_powers = self.get_recv_powers(emit_powers, csi)
+        rates = self.get_rates(recv_powers)
+        metrics = emit_powers, recv_powers, rates
 
-        sort_param = {
-            'power': power_last[:, 1:],
-            'rate': rate_last[:, 1:],
-            'fading': sinr_norm_fading
-        }
+        indices = self.get_indices(*metrics)
+        rate = rates[:, 0]
 
-        # sorter = sinr_norm_inv
-        sorter = sort_param[self.sorter]
-        indices1 = np.tile(np.expand_dims(np.linspace(
-            0, n_channel-1, num=n_channel, dtype=np.int32), axis=1),
-            [1, m_state])
-        indices2 = np.argsort(sorter, axis=1)[:, -m_state:]
+        states = self.get_states(*metrics, indices=indices)
+        rewards = self.get_rewards(rates, indices)
+        done = self.cur_step == self.Ns - 1
+        info = {'step': self.cur_step, 'd2d': np.sum(rate[:self.n_pair]),
+                'bs': np.sum(rate[self.n_pair: self.n_pair+self.m_cue]),
+                'cue': np.sum(rate[self.n_pair+self.m_cue:]), 'rate': np.mean(rate)}
 
-        rate_last = np.hstack(
-            [rate_last[:, 0:1], rate_last[indices1, indices2+1]])
-        power_last = np.hstack(
-            [power_last[:, 0:1], power_last[indices1, indices2+1]])
-        sinr_norm_fading = sinr_norm_fading[indices1, indices2]
-        metric_param = {
-            'power': power_last,
-            'rate': rate_last,
-            'fading': sinr_norm_fading
-        }
-        state = np.hstack([metric_param[metric] for metric in self.metrics])
+        self.cur_step += 1
 
-        return state[:self.n_t * self.m_r]
+        return states, rewards, done, info
 
     def decode_action(self, action, dBm=False):
         """decode action(especialy discrete) to RB&Power allocation."""
@@ -429,25 +415,6 @@ class PAEnv:
                 allocations[n_t*m_r + n_bs*m_cue + c_index][rb] = power
         return allocations
 
-    def step(self, action, unit):
-        if unit not in {'dBm', 'mW'}:
-            msg = f"unit should in ['dBm', 'mW'], but is {unit}"
-            raise ValueError(msg)
-        dBm = unit == 'dBm'
-        self.allocations = self.decode_action(action, dBm=dBm)
-
-        self.fading = self.fading_set[self.cur_step]
-        rate = self.cal_rate(self.allocations, self.fading)
-
-        state = self.get_state(self.allocations, rate, self.fading)
-        reward = np.sum(rate)
-        done = self.cur_step == self.Ns - 1
-        info = self.cur_step
-
-        self.cur_step += 1
-
-        return state, reward, done, info
-
     def render(self):
 
         def cir_edge(center, radius, color):
@@ -489,6 +456,12 @@ class PAEnv:
         plt.savefig(save_path)
         plt.close(fig)
         return save_path
+
+    def seed(self, seed):
+        np.random.seed(seed)
+
+    def close(self):
+        pass
 
 
 if __name__ == '__main__':
