@@ -3,7 +3,7 @@
 """
 @author: Jiawei Wu
 @create time: 2020-09-25 11:20
-@edit time: 2020-12-27 22:09
+@edit time: 2020-12-29 14:50
 @file: /vvlab/vvlab/envs/power_allocation/pa_rb_env.py
 @desc: An enviornment for power allocation in d2d and BS het-nets.
 
@@ -42,7 +42,9 @@ class PAEnv:
         part_len = {
             'emit_power': self.m_state * self.n_rb,
             'recv_power': self.m_state * self.n_rb,
-            'rate': self.m_state
+            'rate': self.m_state,
+            'csi': self.m_state,
+            'emit_sum': self.m_state,
         }
         return sum(part_len[metric] for metric in self.metrics)
 
@@ -52,18 +54,19 @@ class PAEnv:
         return self.n_level*self.n_valid_rb
 
     def init_observation_space(self, kwargs):
-        valid_parts = ['emit_power', 'recv_power', 'rate']
+        valid_sorters = ['recv_power', 'csi']
         # default using power
         sorter = kwargs['sorter'] if 'sorter' in kwargs else 'recv_power'
         # default using all
-        metrics = kwargs['metrics'] if 'metrics' in kwargs else valid_parts
+        valid_metrics = ['emit_power', 'recv_power', 'rate', 'csi', 'emit_sum']
+        metrics = kwargs['metrics'] if 'metrics' in kwargs else valid_metrics
 
         # check data
-        if sorter not in valid_parts:
-            msg = f'sorter should in emit_power, recv_power and rate,'
+        if sorter not in valid_sorters:
+            msg = f'sorter should in recv_power and csi,'
             f' but is {sorter}'
             raise ValueError(msg)
-        if any(metric not in valid_parts for metric in metrics):
+        if any(metric not in valid_metrics for metric in metrics):
             msg = f'metrics should in emit_power, recv_power and rate,'
             f' but is {metrics}'
             raise ValueError(msg)
@@ -293,11 +296,12 @@ class PAEnv:
         return rates.T  # make rate as a column
 
     def get_indices(self, *metrics):
-        emit_powers, recv_powers, rates = metrics
+        emit_powers, recv_powers, rates, csi = metrics
         m_state = self.m_state
         # sort by recv_powers
         sort_param = {
             'recv_power': recv_powers.sum(axis=2),
+            'csi': csi.copy()
         }
         sorter = sort_param[self.sorter]
         sorter[sorter == sorter.diagonal()] = float(
@@ -313,16 +317,19 @@ class PAEnv:
         return rewards[:self.n_pair]
 
     def get_states(self, *metrics, indices):
-        emit_powers, recv_powers, rates = metrics
+        emit_powers, recv_powers, rates, csi = metrics
         # metrics
         # metrics and indices use dim_0 for tx and dim_1 for rx
         # states need dim_0 to be rx
+        csi_norm = np.log2(1+csi / np.tile(np.max(csi, axis=0), [self.n_channel, 1]))
         metric_param = {
             'emit_power': np.swapaxes(emit_powers[indices], 0, 1).
-            reshape(self.n_channel, -1),
+            reshape(self.n_channel, -1) / 1000,
             'recv_power': np.swapaxes(recv_powers[indices], 0, 1).
             reshape(self.n_channel, -1),
             'rate': np.swapaxes(rates[indices], 0, 1),
+            'csi': np.swapaxes(csi_norm[indices], 0, 1),
+            'emit_sum': np.swapaxes(emit_powers.sum(axis=2)[indices], 0, 1)
         }
 
         state = np.hstack([metric_param[metric] for metric in self.metrics])
@@ -342,10 +349,10 @@ class PAEnv:
         rates = self.get_rates(recv_powers)
         metrics = emit_powers, recv_powers, rates
 
-        indices = self.get_indices(*metrics)
+        indices = self.get_indices(*metrics, csi)
         rate = rates[:, 0]
 
-        states = self.get_states(*metrics, indices=indices)
+        states = self.get_states(*metrics, csi, indices=indices)
         rewards = self.get_rewards(rates, indices)
         done = self.cur_step == self.Ns - 1
         info = {'step': self.cur_step, 'd2d': np.sum(rate[:self.n_pair]),
@@ -360,6 +367,7 @@ class PAEnv:
         """decode action(especialy discrete) to RB&Power allocation."""
         n_t, m_r, n_bs, m_cue = self.n_t, self.m_r, self.n_bs, self.m_cue
         action = action.squeeze()
+
         # check action count
         if len(action) == self.n_t*self.m_r or len(action) == self.n_channel:
             # if action includes authorized cues, abandon
@@ -379,7 +387,8 @@ class PAEnv:
                 rb, level = divmod(a, self.n_level)
                 if dBm:
                     power = (self.max_dBm - self.min_dBm) / \
-                        self.n_level * level
+                        (self.n_level - 1) * (level - 1) + \
+                        self.min_dBm if level else 0
                     power = str(power)+'dBm' if power else '-infdBm'
                 else:
                     power = (self.max_mW - self.min_mW) / self.n_level * level
