@@ -163,7 +163,7 @@ def test_get_indices():
     ])
     recv_powers = env.get_recv_powers(emit_powers, fading)
     rates = env.get_rates(recv_powers)
-    metrics = emit_powers, recv_powers, rates
+    metrics = emit_powers, recv_powers, rates, fading
     # rx_indice don't need test
     tx_indice, rx_indice = env.get_indices(*metrics)
     target_tx_indice = np.array([
@@ -193,7 +193,7 @@ def test_get_rewards():
     recv_powers = env.get_recv_powers(emit_powers, fading)
     rates = env.get_rates(recv_powers)
 
-    metrics = emit_powers, recv_powers, rates
+    metrics = emit_powers, recv_powers, rates, fading
     indices = env.get_indices(*metrics)
     rewards = env.get_rewards(rates, indices)
     target_rewards = np.array([
@@ -209,11 +209,13 @@ def test_get_rewards():
 def test_get_states():
     # test m_state
     env = PAEnv(n_level=4, n_pair=2, m_cue=1,
-                m_state=8)
+                m_state=8, metrics=['emit_power', 'recv_power', 'rate'],
+                sorter='recv_power')
     assert env.m_state == 4
 
     env = PAEnv(n_level=4, n_pair=2, m_cue=1,
-                m_state=2)
+                m_state=2, metrics=['emit_power', 'recv_power', 'rate'],
+                sorter='recv_power')
     power = np.array([
         [0.01, 0],
         [0, 0.01],
@@ -231,7 +233,7 @@ def test_get_states():
     recv_powers = env.get_recv_powers(emit_powers, fading)
     rates = env.get_rates(recv_powers)
 
-    metrics = emit_powers, recv_powers, rates
+    metrics = emit_powers, recv_powers, rates, fading
     indices = env.get_indices(*metrics)
     states = env.get_states(*metrics, indices=indices)
     _recv = np.array([
@@ -281,13 +283,13 @@ def test_action():
     np.random.seed(799345)
     action = np.random.randint(0, n_actions, (n_channel, ))
     s_, r, d, i = env.step(action, unit='dBm')
-    assert i['rate'] == 3.511809584215079
+    assert i['rate'] == 3.4741923099965257
     # only D2D actions is enough
     env.reset()
     np.random.seed(799345)
     action = np.random.randint(0, n_actions, (n_pair, ))
     s_, r, d, i = env.step(action, unit='dBm')
-    assert i['rate'] == 3.511809584215079
+    assert i['rate'] == 3.4741923099965257 
     # other action dim raises error
     env.reset()
     np.random.seed(799345)
@@ -311,7 +313,7 @@ def test_step():
     env = PAEnv(n_level=10)
     n_actions, n_states = env.n_actions, env.n_states
     assert n_actions == 40
-    assert n_states == 272
+    assert n_states == 304
     env.reset()
     action = env.sample()
     env.step(action, unit='dBm')

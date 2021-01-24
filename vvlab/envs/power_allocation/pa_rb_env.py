@@ -324,7 +324,7 @@ class PAEnv:
         csi_norm = np.log2(1+csi / np.tile(np.max(csi, axis=0), [self.n_channel, 1]))
         metric_param = {
             'emit_power': np.swapaxes(emit_powers[indices], 0, 1).
-            reshape(self.n_channel, -1) / 1000,
+            reshape(self.n_channel, -1),
             'recv_power': np.swapaxes(recv_powers[indices], 0, 1).
             reshape(self.n_channel, -1),
             'rate': np.swapaxes(rates[indices], 0, 1),
