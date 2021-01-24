@@ -20,7 +20,7 @@ class DDPGBase(object):
 
     def __init__(self, n_states, n_actions, action_bound=1, buff_size=1000,
                  buff_thres=0, batch_size=32, lr_a=0.001, lr_c=0.002, tau=0.01,
-                 gamma=0.9, summary=False, card_n0=0, *args, **kwargs):
+                 gamma=0.9, summary=False, card_no=0, *args, **kwargs):
         """Initialize the base class.
 
          Args:
@@ -80,7 +80,7 @@ class DDPGBase(object):
         # create experience replay pool
         self.buff = ReplayBuffer(self.n_states, self.n_actions,
                                  buff_size=self.buff_size,
-                                 buff_thres=self.buff_thres
+                                 buff_thres=self.buff_thres,
                                  card_no=self.card_no)
 
         # bulid neural networks
